@@ -9,7 +9,9 @@
 2. 僅在 `modules/ModuleRegistry.kt` 的 `modules` 註冊 `ModuleDefinition(id, nameRes, ...)`。UI、設定與服務分派都從此表產生；不要在 MainActivity、Adapter 或服務加入依模組 ID 的 when 分支。
 3. 無障礙模組提供 `createService`；若需要新目標 App，同時將 package 加入 `res/xml/accessibility_service_config.xml` 的 packageNames。各實例獨立維持 450ms 冷卻，動作成功才計數。
 4. 非無障礙模組可不提供 createService；沿用模組卡片，依具體需求擴充自己的操作畫面，避免把業務邏輯寫進容器。
-5. 使用者已移除遮罩、入口觸控攔截與輪詢，不要恢復。服務僅依指定視窗事件分派，檢查事件與目前視窗套件一致；保護 Instagram Stories 與其他 App。廣告自動略過模組經評估後暫不加入，未經新需求不要新增。
+5. 使用者已移除遮罩、入口觸控攔截與輪詢，不要恢復。檢查事件與目前視窗套件一致；保護 Instagram Stories 與其他 App。
+6. yt_ad_skip 已依新授權加入，預設 false：延遲為 N(500ms,(200ms)²) 截斷至 0–1000ms（標準差 200ms），X/Y 獨立截斷常態落於當前按鈕中央 60% 區域。不得宣稱防偵測或零帳號風險。等待後重新取得可按按鈕，手動操作、關閉模組、停止服務時取消待執行動作；只在手勢完成且按鈕消失後計數。
+7. 非同步模組使用 ModuleEnvironment 的服務 scope／設定／成功回報及 ToolboxModule 的生命週期 hooks。停止服務必須取消工作；不要保留 AccessibilityNodeInfo 跨延遲，也不要在 MainActivity／Service 依模組 ID 加分支。
 
 ## DataStore
 
@@ -20,7 +22,7 @@
 
 ## 版本、簽章與驗收
 
-- 目前 versionCode 4 / versionName 1.0.3。每次發布 versionCode 必須嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 `v<versionName>`。
+- 目前 versionCode 5 / versionName 1.1.0。每次發布 versionCode 必須嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 `v<versionName>`。
 - 正式更新來源固定為公開倉庫 garytu001/personal-toolbox，不得恢復 YOUR_GITHUB_USERNAME。GITHUB_TOKEN 留空；手機不存放倉庫 Token。
 - applicationId 與正式簽章金鑰不可變。Release 優先讀四個 KEYSTORE_* / KEY_* 環境變數，缺少欄位才讀 keystore.properties；金鑰與密碼不得提交版本控制。
 - 每次修改完成執行 `gradlew.bat assembleDebug testDebugUnitTest lintDebug`（Unix 用 `./gradlew`），修正必要錯誤，說明未實機驗證的範圍。不能把編譯成功宣稱為實機功能驗證。

@@ -7,6 +7,10 @@ import com.local.personaltoolbox.data.ToolboxSettings
 
 abstract class ToolboxModule(val id: String, val packageName: String) {
     private var lastActionTime: Long? = null
+    internal open fun connect(environment: ModuleEnvironment) = Unit
+    internal open fun observeWindow(root: AccessibilityNodeInfo) = Unit
+    internal open fun onUserInteraction() = Unit
+    internal open fun cancelPending() = Unit
 
     fun handle(service: AccessibilityService, root: AccessibilityNodeInfo, settings: ToolboxSettings): Boolean {
         if (root.packageName?.toString() != packageName || !settings.isEnabled(id)) return false

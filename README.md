@@ -13,11 +13,11 @@
 | applicationId | com.local.personaltoolbox |
 | App 名稱 | Toolbox |
 | min / target / compile SDK | 26 / 34 / 34 |
-| versionCode / versionName | 4 / 1.0.3 |
+| versionCode / versionName | 5 / 1.1.0 |
 | Gradle / AGP / Kotlin | 8.14.3 / 8.13.2 / 2.1.20 |
 | JVM 目標 / CI JDK | 17 / 17 |
 
-目前版本為 4 / 1.0.3；以後每次發布同時增加 versionCode 與語意版本。本版已接上正式 GitHub 更新來源，採純黑白灰配色，完全移除短影音遮罩，保留播放頁退出。經使用者評估，暫不加入廣告自動略過模組。
+目前版本為 5 / 1.1.0；以後每次發布同時增加 versionCode 與語意版本。本版新增預設關閉的 YouTube 廣告略過模組，保留正式 GitHub 更新來源、純黑白灰配色、Shorts／Reels 播放頁退出；沒有遮罩。
 
 Windows：
 
@@ -51,9 +51,21 @@ Debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
 
 新增模組的註冊方式、資料儲存與發版規則，見根目錄 **AGENTS.md**。唯一註冊表為 `modules/ModuleRegistry.kt`，UI、預設資料與無障礙服務從同一張表產生，不在 Activity 或服務中硬編碼模組 ID 分支。
 
-目前模組：`yt_shorts`、`ig_reels`。服務以套件分派至獨立模組實例，每個模組維持 450ms 冷卻；Instagram 僅偵測 clips 與 Reels，排除 Stories 子樹，優先回首頁再後退。
+目前模組：`yt_shorts`、`ig_reels`、`yt_ad_skip`。服務以套件分派至獨立模組實例，每個模組維持 450ms 冷卻；Instagram 僅偵測 clips 與 Reels，排除 Stories 子樹，優先回首頁再後退。新模組會附加到使用者既有順序末尾。
 
-本版完全移除遮罩與底部入口觸控攔截，也移除視窗檢索能力及背景輪詢；首頁縮圖與入口恢復原 App 顯示。保留 Shorts／Reels 播放頁的返回／切回首頁，仍有各自 450ms 冷卻。只監聽指定套件的視窗狀態與內容變更事件，並核對目前視窗套件以防過期事件誤操作。
+## YouTube 廣告略過
+
+此模組預設關閉。手機使用正式版 v1.0.3 時，可按「更新」取得 v1.1.0，保留開關、排序及計數；安裝後先在系統無障礙設定將 Toolbox 關閉再開啟一次，以載入新增的 canPerformGestures 能力，再開啟「YouTube 廣告略過」。沒有新增一般 uses-permission。
+
+- 只處理 YouTube 內可見、已啟用、可按的略過廣告按鈕，優先比對 view ID，再以明確文字／內容描述與按鈕語意做保守匹配。倒數、Premium 推銷、隱藏或未啟用控制項不點擊；沒有略過按鈕的廣告不處理。
+- 延遲使用均值 500ms、標準差 200ms 的常態分佈，拒絕重抽超出 0–1000ms 的樣本；不以邊界裁切代替截斷取樣。
+- 點擊 X/Y 各自以按鈕中心為均值、中央安全區寬／高的 1/6 為標準差取樣，截斷在按鈕中央 60% 矩形內；不使用固定螢幕座標。
+- 等待後重新取得按鈕，核對套件、視窗、識別資訊及範圍完全相同才點擊。畫面或按鈕改變、操作畫面、關閉模組或停止服務時取消待執行工作。
+- 每次可用按鈕最多嘗試一次。40ms 點擊手勢完成後，待介面更新並確認略過按鈕消失才累計；手勢失敗、取消、超時或按鈕仍在都不計數。
+- Android 的程式手勢可能中斷當時的觸控操作。已取消可觀察到的手動點擊／捲動期間等待中的動作，但不能保證辨識所有觸控情況。
+- 隨機延遲與位置不保證防偵測、符合 YouTube 條款或帳號零風險。第三方 App 改版可能令識別失效；這是可關閉的個人實驗功能，需要實機測試。
+
+遮罩與底部入口觸控攔截、視窗檢索能力及背景輪詢均已移除；首頁縮圖與入口由原 App 顯示。保留 Shorts／Reels 播放頁的返回／切回首頁，仍有各自 450ms 冷卻。只監聽指定套件的視窗狀態、內容變更，以及用於取消等待工作的點擊／捲動事件，並核對目前視窗套件以防過期事件誤操作。
 
 ## 本機資料
 
@@ -65,6 +77,8 @@ Debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
 | yt_shorts_blocked_count | Int | 0 |
 | ig_reels_enabled | Boolean | true |
 | ig_reels_blocked_count | Int | 0 |
+| yt_ad_skip_enabled | Boolean | false |
+| yt_ad_skip_blocked_count | Int | 0 |
 | module_order | String | yt_shorts,ig_reels |
 
 舊 youtube_shorts_* / instagram_reels_* 經 DataMigration 遷移至新 ID，不覆蓋已存在的新鍵。新增模組附加到已存順序末尾，未知或重複 ID 不產生空卡片。計數採原子更新，防止溢位。
@@ -78,8 +92,8 @@ Debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
    - KEYSTORE_PASSWORD
    - KEY_ALIAS
    - KEY_PASSWORD
-4. 推送與 versionName 相同的 Tag，例如 `v1.0.3`。Workflow 使用 JDK 17，還原金鑰、編譯簽署、測試及 lint，透過 softprops/action-gh-release@v2 建立 Release 並上傳 app-release.apk。
-5. 下一版例如 versionCode 5、versionName 1.0.4，再推送 v1.0.4。永遠使用相同 applicationId 與 Release 金鑰。
+4. 推送與 versionName 相同的 Tag，例如 `v1.1.0`。Workflow 使用 JDK 17，還原金鑰、編譯簽署、測試及 lint，透過 softprops/action-gh-release@v2 建立 Release 並上傳 app-release.apk。
+5. 下一版例如 versionCode 6、versionName 1.1.1，再推送 v1.1.1。永遠使用相同 applicationId 與 Release 金鑰。
 
 正式簽章憑證 SHA-256：`ecd1392a6cb1e6aa747fe65c75bfcc862ace087cd8700c06fb0406d10de81daf`。
 
@@ -94,8 +108,8 @@ Manifest 只包含 INTERNET、REQUEST_INSTALL_PACKAGES 兩項 uses-permission；
 ## 驗收
 
 - `assembleDebug`、`testDebugUnitTest`、`lintDebug`。
-- 13 項 JVM 測試：SemVer 5、排序規則 5、實際 DataStore 重建／遷移／併發計數 3。隨已刪除的遮罩功能一併移除其 18 項測試。
-- 實機仍需核對：狀態列與底部內距、握把／長按拖曳、重啟後排序、開關／計數保留、Shorts／Reels、Stories，以及正式 GitHub OTA。
+- 35 項 JVM 測試：SemVer 5、排序規則 5、DataStore 4、廣告按鈕規則 5、截斷常態取樣 4、延遲／取消／重驗證／去重／完成確認 12。
+- 實機仍需核對：狀態列與底部內距、拖曳排序、開關／計數保留、Shorts／Reels、Stories、廣告按鈕辨識、手勢落點與成功次數，以及正式 GitHub OTA。
 - GitHub 正式倉庫為 garytu001/personal-toolbox；發版結果見 Releases 與 Actions。完整手機端安裝／更新仍需實機確認。
 
 參考：[ItemTouchHelper](https://developer.android.com/reference/androidx/recyclerview/widget/ItemTouchHelper)、[WindowInsets](https://developer.android.com/develop/ui/views/layout/edge-to-edge)、[GitHub Release assets](https://docs.github.com/en/rest/releases/assets)。

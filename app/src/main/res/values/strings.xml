@@ -7,6 +7,8 @@
     <string name="battery_settings">電池</string>
     <string name="youtube_title">YouTube Shorts 攔截</string>
     <string name="instagram_title">Instagram Reels 攔截</string>
+    <string name="youtube_ads_title">YouTube 廣告略過</string>
+    <string name="ads_skip_count">已略過：%1$,d 次</string>
     <string name="module_count">攔截：%1$,d 次</string>
     <string name="drag_module">調整順序</string>
     <string name="move_up">上移</string>
@@ -32,5 +34,5 @@
     <string name="settings_unavailable">設定無法開啟</string>
     <string name="preferences_error">儲存失敗</string>
     <string name="accessibility_service_name">Toolbox</string>
-    <string name="accessibility_service_description">Shorts／Reels 攔截</string>
+    <string name="accessibility_service_description">Shorts／Reels 攔截、廣告略過</string>
 </resources>

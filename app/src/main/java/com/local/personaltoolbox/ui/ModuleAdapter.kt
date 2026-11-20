@@ -64,7 +64,7 @@ class ModuleAdapter(
             val name = context.getString(definition.nameRes)
             val state = states[definition.id]
             binding.moduleName.text = name
-            val label = context.getString(R.string.module_count, state?.blockedCount ?: 0)
+            val label = context.getString(definition.countLabelRes, state?.blockedCount ?: 0)
             binding.moduleCount.text = SpannableString(label).apply {
                 val start = label.indexOfFirst(Char::isDigit)
                 val end = label.indexOfLast(Char::isDigit) + 1

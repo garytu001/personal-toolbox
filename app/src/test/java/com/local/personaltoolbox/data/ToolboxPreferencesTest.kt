@@ -84,4 +84,21 @@ class ToolboxPreferencesTest {
             assertEquals(Int.MAX_VALUE, store.data.first()[key])
         } finally { scope.cancel() }
     }
+
+    @Test fun newAdModuleAppendsToSavedOrderAndStartsDisabled() = runBlocking {
+        val file = temporary.newFile("new-module.preferences_pb")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(scope = scope) { file }
+            val old = ToolboxPreferences(store, scope, definitions)
+            old.setModuleOrder(listOf("ig_reels", "yt_shorts"))
+            old.incrementBlockedCount("yt_shorts")
+            val updated = ToolboxPreferences(store, scope, definitions + ModuleDefinition("yt_ad_skip", 3, defaultEnabled = false))
+            val settings = withTimeout(5_000) { updated.settings.filterNotNull().first() }
+            assertEquals(listOf("ig_reels", "yt_shorts", "yt_ad_skip"), settings.moduleOrder)
+            assertEquals(1, settings.blockedCount("yt_shorts"))
+            assertFalse(settings.isEnabled("yt_ad_skip"))
+            assertEquals(0, settings.blockedCount("yt_ad_skip"))
+        } finally { scope.cancel() }
+    }
 }
