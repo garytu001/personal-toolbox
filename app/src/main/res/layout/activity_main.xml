@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical">
+    <LinearLayout android:id="@+id/topBar"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:minHeight="64dp" android:orientation="horizontal" android:gravity="center_vertical"
+        android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="4dp" android:paddingBottom="4dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:orientation="vertical" android:paddingEnd="8dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical">
+                <View android:id="@+id/statusDot" android:layout_width="8dp" android:layout_height="8dp"
+                    android:layout_marginEnd="6dp" android:background="@drawable/status_dot" android:importantForAccessibility="no" />
+                <TextView android:id="@+id/serviceStatus" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/service_disabled" android:textColor="@color/text_secondary" android:textSize="13sp"
+                    android:maxLines="1" android:accessibilityLiveRegion="polite" />
+            </LinearLayout>
+            <TextView android:id="@+id/versionName" android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="3dp" android:textColor="@color/text_secondary" android:textSize="12sp"
+                android:fontFeatureSettings="tnum" android:maxLines="1" />
+        </LinearLayout>
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/accessibilityButton"
+            style="@style/CompactButton" android:text="@string/accessibility_settings" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/batteryButton"
+            style="@style/CompactButton" android:layout_marginStart="4dp" android:text="@string/battery_settings" />
+        <androidx.appcompat.widget.AppCompatButton android:id="@+id/checkUpdateButton"
+            style="@style/CompactButton" android:layout_marginStart="4dp" android:text="@string/check_update" />
+    </LinearLayout>
+    <androidx.recyclerview.widget.RecyclerView android:id="@+id/moduleList"
+        android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"
+        android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp" android:paddingBottom="12dp"
+        android:clipToPadding="false" android:scrollbars="vertical" />
+</LinearLayout>

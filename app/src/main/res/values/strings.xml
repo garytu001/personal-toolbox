@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Toolbox</string>
+    <string name="service_running">運作中</string>
+    <string name="service_disabled">未啟用</string>
+    <string name="accessibility_settings">無障礙</string>
+    <string name="battery_settings">電池</string>
+    <string name="youtube_title">YouTube Shorts 攔截</string>
+    <string name="instagram_title">Instagram Reels 攔截</string>
+    <string name="module_count">攔截：%1$,d 次</string>
+    <string name="drag_module">調整順序</string>
+    <string name="move_up">上移</string>
+    <string name="move_down">下移</string>
+    <string name="version_value">v%1$s</string>
+    <string name="check_update">更新</string>
+    <string name="update_idle">更新</string>
+    <string name="update_checking">檢查中</string>
+    <string name="update_not_configured">未設定更新來源</string>
+    <string name="update_latest">已是最新版本</string>
+    <string name="update_available">v%1$s</string>
+    <string name="update_title">v%1$s</string>
+    <string name="update_now">更新</string>
+    <string name="later">取消</string>
+    <string name="update_no_notes">更新</string>
+    <string name="update_download_preparing">準備下載</string>
+    <string name="update_downloading">下載中</string>
+    <string name="update_ready">可安裝</string>
+    <string name="update_installing">安裝中</string>
+    <string name="update_permission_required">需要安裝權限</string>
+    <string name="update_error">更新失敗：%1$s</string>
+    <string name="storage_error">快取目錄無法使用</string>
+    <string name="settings_unavailable">設定無法開啟</string>
+    <string name="preferences_error">儲存失敗</string>
+    <string name="accessibility_service_name">Toolbox</string>
+    <string name="accessibility_service_description">Shorts／Reels 攔截</string>
+</resources>
