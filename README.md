@@ -13,11 +13,11 @@
 | applicationId | com.local.personaltoolbox |
 | App 名稱 | Toolbox |
 | min / target / compile SDK | 26 / 34 / 34 |
-| versionCode / versionName | 3 / 1.0.2 |
+| versionCode / versionName | 4 / 1.0.3 |
 | Gradle / AGP / Kotlin | 8.14.3 / 8.13.2 / 2.1.20 |
 | JVM 目標 / CI JDK | 17 / 17 |
 
-目前版本為 3 / 1.0.2；以後每次發布同時增加 versionCode 與語意版本。本版已接上正式 GitHub 更新來源，採純黑白灰配色，完全移除短影音遮罩，保留播放頁退出。經使用者評估，暫不加入廣告自動略過模組。
+目前版本為 4 / 1.0.3；以後每次發布同時增加 versionCode 與語意版本。本版已接上正式 GitHub 更新來源，採純黑白灰配色，完全移除短影音遮罩，保留播放頁退出。經使用者評估，暫不加入廣告自動略過模組。
 
 Windows：
 
@@ -78,8 +78,8 @@ Debug APK：`app/build/outputs/apk/debug/app-debug.apk`。
    - KEYSTORE_PASSWORD
    - KEY_ALIAS
    - KEY_PASSWORD
-4. 推送與 versionName 相同的 Tag，例如 `v1.0.2`。Workflow 使用 JDK 17，還原金鑰、編譯簽署、測試及 lint，透過 softprops/action-gh-release@v2 建立 Release 並上傳 app-release.apk。
-5. 下一版例如 versionCode 4、versionName 1.0.3，再推送 v1.0.3。永遠使用相同 applicationId 與 Release 金鑰。
+4. 推送與 versionName 相同的 Tag，例如 `v1.0.3`。Workflow 使用 JDK 17，還原金鑰、編譯簽署、測試及 lint，透過 softprops/action-gh-release@v2 建立 Release 並上傳 app-release.apk。
+5. 下一版例如 versionCode 5、versionName 1.0.4，再推送 v1.0.4。永遠使用相同 applicationId 與 Release 金鑰。
 
 正式簽章憑證 SHA-256：`ecd1392a6cb1e6aa747fe65c75bfcc862ace087cd8700c06fb0406d10de81daf`。
 

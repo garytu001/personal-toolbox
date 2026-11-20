@@ -20,7 +20,7 @@
 
 ## 版本、簽章與驗收
 
-- 目前 versionCode 3 / versionName 1.0.2。每次發布 versionCode 必須嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 `v<versionName>`。
+- 目前 versionCode 4 / versionName 1.0.3。每次發布 versionCode 必須嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 `v<versionName>`。
 - 正式更新來源固定為公開倉庫 garytu001/personal-toolbox，不得恢復 YOUR_GITHUB_USERNAME。GITHUB_TOKEN 留空；手機不存放倉庫 Token。
 - applicationId 與正式簽章金鑰不可變。Release 優先讀四個 KEYSTORE_* / KEY_* 環境變數，缺少欄位才讀 keystore.properties；金鑰與密碼不得提交版本控制。
 - 每次修改完成執行 `gradlew.bat assembleDebug testDebugUnitTest lintDebug`（Unix 用 `./gradlew`），修正必要錯誤，說明未實機驗證的範圍。不能把編譯成功宣稱為實機功能驗證。
