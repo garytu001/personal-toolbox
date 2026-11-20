@@ -5,9 +5,14 @@
     <string name="service_disabled">未啟用</string>
     <string name="accessibility_settings">無障礙</string>
     <string name="battery_settings">電池</string>
-    <string name="youtube_title">YouTube Shorts 攔截</string>
-    <string name="instagram_title">Instagram Reels 攔截</string>
     <string name="youtube_ads_title">YouTube 廣告略過</string>
+    <string name="short_video_title">短影音攔截</string>
+    <string name="youtube_platform">YouTube</string>
+    <string name="instagram_platform">Instagram</string>
+    <string name="facebook_platform">Facebook</string>
+    <string name="media_control">媒體控制</string>
+    <string name="media_control_required">授權媒體控制</string>
+    <string name="media_access_service">Toolbox 媒體控制</string>
     <string name="ads_skip_count">已略過：%1$,d 次</string>
     <string name="module_count">攔截：%1$,d 次</string>
     <string name="drag_module">調整順序</string>

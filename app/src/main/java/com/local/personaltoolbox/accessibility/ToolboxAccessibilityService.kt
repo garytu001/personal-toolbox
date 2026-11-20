@@ -42,7 +42,7 @@ class ToolboxAccessibilityService : AccessibilityService() {
         val sourcePackage = event.packageName?.toString() ?: return
         val candidates = modules[sourcePackage] ?: run { cancelPending(); return }
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            candidates.forEach { it.onUserInteraction() }
+            candidates.forEach { it.onUserInteraction(event.eventType) }
             return
         }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&

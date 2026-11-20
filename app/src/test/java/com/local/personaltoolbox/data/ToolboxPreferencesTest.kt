@@ -85,6 +85,37 @@ class ToolboxPreferencesTest {
         } finally { scope.cancel() }
     }
 
+    @Test fun addingFacebookPreservesEachOldSwitchCounterAndCustomOrder() = runBlocking {
+        val file = temporary.newFile("grouped.preferences_pb")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(scope = scope) { file }
+            val oldDefinitions = definitions + ModuleDefinition("yt_ad_skip", 3, defaultEnabled = false)
+            val old = ToolboxPreferences(store, scope, oldDefinitions)
+            old.setEnabled("yt_shorts", false)
+            old.setEnabled("yt_ad_skip", true)
+            old.incrementBlockedCount("yt_shorts")
+            old.incrementBlockedCount("ig_reels")
+            old.incrementBlockedCount("ig_reels")
+            old.incrementBlockedCount("yt_ad_skip")
+            old.setModuleOrder(listOf("yt_ad_skip", "ig_reels", "yt_shorts"))
+            val updated = ToolboxPreferences(store, scope, oldDefinitions + ModuleDefinition("fb_reels", 4, defaultEnabled = false))
+            val settings = withTimeout(5_000) { updated.settings.filterNotNull().first() }
+            assertFalse(settings.isEnabled("yt_shorts"))
+            assertTrue(settings.isEnabled("ig_reels"))
+            assertTrue(settings.isEnabled("yt_ad_skip"))
+            assertFalse(settings.isEnabled("fb_reels"))
+            assertEquals(1, settings.blockedCount("yt_shorts"))
+            assertEquals(2, settings.blockedCount("ig_reels"))
+            assertEquals(1, settings.blockedCount("yt_ad_skip"))
+            assertEquals(listOf("yt_ad_skip", "ig_reels", "yt_shorts", "fb_reels"), settings.moduleOrder)
+            updated.setEnabled("fb_reels", true)
+            val changed = withTimeout(5_000) { updated.settings.filterNotNull().first { it.isEnabled("fb_reels") } }
+            assertFalse(changed.isEnabled("yt_shorts"))
+            assertTrue(changed.isEnabled("ig_reels"))
+        } finally { scope.cancel() }
+    }
+
     @Test fun newAdModuleAppendsToSavedOrderAndStartsDisabled() = runBlocking {
         val file = temporary.newFile("new-module.preferences_pb")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
