@@ -14,7 +14,11 @@ TARGET = "com.sparkslab.dcardreader"
 
 
 def run(*args, timeout=30):
-    return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT, timeout=timeout).strip()
+    try:
+        return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT, timeout=timeout).strip()
+    except subprocess.CalledProcessError as error:
+        print(error.output, flush=True)
+        raise
 
 
 def shell(command):
@@ -71,7 +75,12 @@ public class FixtureActivity extends android.app.Activity {{
         archive.write(root / "classes.dex", "classes.dex")
     aligned = root / "aligned.apk"
     run(str(tools / "zipalign"), "-p", "4", str(fixture), str(aligned))
-    run(str(tools / "apksigner"), "sign", "--ks", str(Path.home() / ".android/debug.keystore"),
+    # A disposable fixture-only key; never rely on Gradle's cache or any production signing key.
+    fixture_key = root / "fixture.jks"
+    run("keytool", "-genkeypair", "-keystore", str(fixture_key), "-storetype", "JKS", "-storepass", "android",
+        "-keypass", "android", "-alias", "fixture", "-keyalg", "RSA", "-keysize", "2048", "-validity", "1",
+        "-dname", "CN=Disposable Recents Fixture", "-noprompt")
+    run(str(tools / "apksigner"), "sign", "--ks", str(fixture_key),
         "--ks-pass", "pass:android", "--key-pass", "pass:android", str(aligned))
     run("adb", "install", str(aligned))
     try:

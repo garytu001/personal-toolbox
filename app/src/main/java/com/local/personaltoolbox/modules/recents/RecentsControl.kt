@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import com.local.personaltoolbox.R
 import com.local.personaltoolbox.ToolboxApplication
 import io.github.muntashirakon.adb.AdbConnection
+import io.github.muntashirakon.adb.AdbStream
 import io.github.muntashirakon.adb.ToolboxPairing
 import java.io.ByteArrayOutputStream
 import java.util.UUID
@@ -163,6 +164,7 @@ class RecentsControl(private val app: ToolboxApplication) {
             if (result == RemovalResult.FAILED) report(R.string.recents_remove_failed, ready = true)
             result
         } catch (e: CancellationException) { throw e }
+        catch (_: RequestBlocked) { RemovalResult.BLOCKED }
         catch (_: Exception) { disconnect(); RemovalResult.FAILED }
     }
 
@@ -176,9 +178,19 @@ class RecentsControl(private val app: ToolboxApplication) {
             if (foregroundOnly) "1" else "0", expiry.toString(), nonce).joinToString(" ", transform = RecentsProtocol::quote)
         val script = "CLASSPATH=${RecentsProtocol.quote(app.applicationInfo.sourceDir)} /system/bin/app_process /system/bin " +
             "com.local.personaltoolbox.modules.recents.RecentsCommand $args"
-        val output = blocking(6_000, { client.close(); connection.compareAndSet(client, null) }) {
-            check(allowed()) // Re-check after dispatching to the I/O worker, before opening any command stream.
+        val activeStream = AtomicReference<AdbStream?>()
+        val output = blocking(6_000, {
+            val stream = activeStream.get()
+            if (stream != null) stream.close()
+            else {
+                client.close()
+                if (connection.compareAndSet(client, null)) report(R.string.recents_disconnected)
+            }
+        }) {
+            // Re-check after dispatching to the I/O worker, before opening any command stream.
+            if (!allowed()) throw RequestBlocked()
             client.open("shell:$script").use { stream ->
+                activeStream.set(stream)
                 stream.openInputStream().use { input ->
                     val buffer = ByteArray(1024)
                     val result = ByteArrayOutputStream()
@@ -229,6 +241,7 @@ class RecentsControl(private val app: ToolboxApplication) {
         override fun destroy() = Unit
         override fun isDestroyed() = false
     }
+    private class RequestBlocked : Exception()
 
     companion object {
         const val ID = "recents_control"
