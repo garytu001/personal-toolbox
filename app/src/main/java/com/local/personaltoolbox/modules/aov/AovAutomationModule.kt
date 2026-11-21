@@ -8,7 +8,6 @@ import android.accessibilityservice.GestureDescription
 import android.app.KeyguardManager
 import android.graphics.Bitmap
 import android.graphics.Path
-import android.graphics.Rect
 import android.os.Build
 import android.os.PowerManager
 import android.util.Log
@@ -18,6 +17,7 @@ import androidx.annotation.RequiresApi
 import com.local.personaltoolbox.ToolboxApplication
 import com.local.personaltoolbox.accessibility.ModuleEnvironment
 import com.local.personaltoolbox.accessibility.ToolboxModule
+import com.local.personaltoolbox.modules.recents.RemovalResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -28,14 +28,13 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import java.util.Locale
 
 class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKAGE) {
-    override val packageNames = setOf(AovReminder.GAME_PACKAGE, LAUNCHER_PACKAGE)
     private var job: Job? = null
     private var ownGesture = false
     private var environment: ModuleEnvironment? = null
     private var handledRequest: String? = null
+    private var removingCard = false
 
     internal override fun connect(environment: ModuleEnvironment) {
         this.environment = environment
@@ -67,7 +66,7 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
             if (request.cleanupOnly) {
                 check(store.hasConfirmedSuccessToday())
                 done = true
-                withTimeout(20_000) { delay(1_500); removeGameFromRecents(env, request) }
+                withTimeout(10_000) { removeGameFromRecents(env, request) }
                 AovRunRequests.finish(request, "今日已購買，已移除遊戲卡片")
                 return
             }
@@ -118,6 +117,7 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
             val message = when {
                 committed && !done -> "購買結果待確認，今天不再自動購買"
                 done -> "今日已購買；最近使用卡片未確認移除"
+                e.message == "recents_not_ready" -> "請先完成背景移除卡片連線"
                 e.message == "game_version_changed" -> "遊戲版本已變更，需重新核對畫面"
                 else -> "畫面未辨識或流程中止，未送出購買"
             }
@@ -175,84 +175,26 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
 
     private suspend fun removeGameFromRecents(env: ModuleEnvironment, request: AovRunRequest) {
         checkAllowed(env, request, packageName)
-        ownGesture = true
+        val control = (env.service.application as ToolboxApplication).recentsControl
+        check(control.isReady()) { "recents_not_ready" }
+        removingCard = true
         try {
-            check(env.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME))
-            delay(1_200)
-            checkAllowed(env, request, LAUNCHER_PACKAGE)
-            check(env.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_RECENTS))
-            delay(1_200)
-        } finally { ownGesture = false }
-        checkAllowed(env, request, LAUNCHER_PACKAGE)
-        val root = env.service.rootInActiveWindow ?: error("no_recents")
-        ownGesture = true
-        try {
-            try {
-                check(findGameCards(root).first == 1) { "game_card_missing" }
-                check(dismissGameCard(root)) { "close_action_unavailable" }
-            } finally { root.recycle() }
-            delay(1_500)
-        } finally { ownGesture = false }
-        checkAllowed(env, request, LAUNCHER_PACKAGE)
-        val remaining = env.service.rootInActiveWindow ?: error("no_recents")
-        try { check(findGameCards(remaining).first == 0) { "card_still_present" } } finally { remaining.recycle() }
-        ownGesture = true
-        try { env.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); delay(300) }
-        finally { ownGesture = false }
-    }
-
-    private fun dismissGameCard(root: AccessibilityNodeInfo): Boolean {
-        fun visit(node: AccessibilityNodeInfo, depth: Int): Boolean {
-            if (depth > 40 || !node.isVisibleToUser) return false
-            if (node.viewIdResourceName == "$LAUNCHER_PACKAGE:id/snapshot" && node.contentDescription?.toString() == "傳說對決") {
-                val card = node.parent ?: return false
-                try {
-                    if (card.viewIdResourceName != "$LAUNCHER_PACKAGE:id/task_view_single") return false
-                    Log.i(TAG, "Game card actions: ${card.actionList.map { it.label?.toString() ?: it.id.toString() }}")
-                    val close = card.actionList.firstOrNull {
-                        it.id == AccessibilityNodeInfo.ACTION_DISMISS || it.label?.toString()?.trim()?.lowercase(Locale.ROOT) in
-                            setOf("close", "close app", "dismiss", "關閉", "关闭", "移除")
-                    } ?: return false
-                    return card.performAction(close.id)
-                } finally { card.recycle() }
+            val result = control.remove(packageName, foregroundOnly = false) {
+                env.settings()?.isEnabled(id) == true && AovRunRequests.requests.value == request &&
+                    AovReminderTime.isCurrentDay(request.date)
             }
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                try { if (visit(child, depth + 1)) return true } finally { child.recycle() }
-            }
-            return false
-        }
-        return visit(root, 0)
-    }
-
-    private fun findGameCards(root: AccessibilityNodeInfo): Pair<Int, Rect?> {
-        if (root.packageName?.toString() != LAUNCHER_PACKAGE) return -1 to null
-        var found: Rect? = null
-        var matches = 0
-        var visited = 0
-        fun visit(node: AccessibilityNodeInfo, depth: Int) {
-            if (++visited > 1_000 || depth > 40 || !node.isVisibleToUser) return
-            if (node.viewIdResourceName == "$LAUNCHER_PACKAGE:id/snapshot" && node.contentDescription?.toString() == "傳說對決") {
-                matches++
-                found = Rect().also(node::getBoundsInScreen)
-            }
-            for (i in 0 until node.childCount) {
-                val child = node.getChild(i) ?: continue
-                try { visit(child, depth + 1) } finally { child.recycle() }
-            }
-        }
-        visit(root, 0)
-        return matches to found
+            check(result == RemovalResult.REMOVED || result == RemovalResult.ABSENT) { "card_not_removed" }
+        } finally { removingCard = false }
     }
 
     internal override fun cancelPending() { job?.cancel() }
+    internal override fun onForegroundLost() { if (!removingCard) cancelPending() }
     internal override fun onUserInteraction(eventType: Int) { if (!ownGesture) cancelPending() }
     override fun matches(root: AccessibilityNodeInfo) = false
     override fun act(service: AccessibilityService, root: AccessibilityNodeInfo) = false
 
     companion object {
         private const val TAG = "AovAutomation"
-        const val LAUNCHER_PACKAGE = "com.asus.launcher"
         const val VERIFIED_GAME_VERSION = "1.64.1.11"
     }
 }

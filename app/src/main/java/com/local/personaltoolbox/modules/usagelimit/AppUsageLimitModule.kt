@@ -10,6 +10,8 @@ import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import com.local.personaltoolbox.accessibility.ModuleEnvironment
 import com.local.personaltoolbox.accessibility.ToolboxModule
+import com.local.personaltoolbox.ToolboxApplication
+import com.local.personaltoolbox.modules.recents.RemovalResult
 
 class AppUsageLimitModule(id: String, packageName: String, private val minutes: Int) : ToolboxModule(id, packageName) {
     internal override val observesForegroundChanges = true
@@ -22,9 +24,18 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
         timer = ContinuousUseTimer(environment.scope, minutes * 60_000L, SystemClock::elapsedRealtime,
             isAllowed = { isTargetForeground(environment) },
             exit = {
-                // Re-read the foreground immediately before sending HOME. No nodes survive a delay.
+                // Both the service and the privileged helper independently verify the foreground.
                 try {
-                    isTargetForeground(environment) && environment.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                    val control = (environment.service.application as ToolboxApplication).recentsControl
+                    if (!isTargetForeground(environment)) false
+                    else if (control.isReady()) {
+                        control.remove(packageName, foregroundOnly = true) { isTargetForeground(environment) } == RemovalResult.REMOVED
+                    } else {
+                        // Preserve the existing time limit when the optional connection is unavailable.
+                        environment.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                    }
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
                 } catch (e: RuntimeException) {
                     Log.w(TAG, "Unable to leave foreground application", e)
                     false

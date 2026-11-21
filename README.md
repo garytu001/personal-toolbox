@@ -11,7 +11,7 @@
 | applicationId | com.local.personaltoolbox |
 | 顯示名稱 | Toolbox |
 | min / target / compile SDK | 26 / 34 / 34 |
-| versionCode / versionName | 8 / 1.4.0 |
+| versionCode / versionName | 9 / 1.5.0 |
 | Gradle / AGP / Kotlin | 8.14.3 / 8.13.2 / 2.1.20 |
 | JVM 目標 / CI JDK | 17 / 17 |
 
@@ -33,6 +33,7 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 - 「短影音攔截」卡片整合 YouTube、Instagram、Facebook 三個獨立開關與計數。
 - 「YouTube 廣告略過」卡片含獨立開關、成功次數及媒體控制授權入口。
 - 「使用時間限制」卡片含 YouTube 20 分鐘、Instagram／Threads／Facebook／Dcard 各 5 分鐘的獨立開關與退出次數，新增預設開啟。
+- 「背景移除卡片」卡片含獨立開關、已確認移除張數與本機連線設定，預設關閉。
 - 卡片可長按或用握把拖曳，放開保存。唯一註冊表 ModuleRegistry.cards 產生扁平 modules 清單；Activity、Adapter、Service 不依模組 ID 加分支。詳細擴充規範見 AGENTS.md。
 - yt_shorts、ig_reels 既有 ID／設定／計數保持原樣；fb_reels 新增預設關閉。合併卡片取舊排序中最早出現成員的位置，整張拖曳後仍以原模組 ID 保存。
 - YouTube 依 Shorts 播放頁 ID／選中分頁退出。Instagram 僅辨識 clips 元件及 Reels 分頁，排除 Stories，優先回首頁。各模組獨立 450ms 冷卻。
@@ -42,8 +43,8 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 ## 功能四：使用時間限制
 
 - 計算每次連續前景使用：YouTube 20 分鐘；Instagram、Threads、Facebook、Dcard 各 5 分鐘。切到其他 App、回桌面、鎖屏、關閉該開關或無障礙服務中斷即重算；點擊、滑動、切換同一 App 內頁面不重算。不累計每日用量，不儲存使用歷史。服務重新啟動或重新開啟開關時，從當前 App 重新計時。
-- 到時透過無障礙 `GLOBAL_ACTION_HOME` 回桌面；這不是強制停止／製造崩潰，也不清除最近使用卡片、背景播放或 App 資料。再次進入 App 會開始新的一次時間。
-- 使用服務 scope 的單次截止計時器，靜止畫面也能到時動作；沒有週期輪詢。截止前再次核對開關、螢幕、鎖屏與前景套件，只操作仍在前景的目標 App；不跨延遲保存節點。HOME 指令被系統接受才增加退出次數，失敗不在同一次使用內反覆重送，各實例保留獨立 450ms 冷卻。
+- 背景連線可用時，到時直接移除目標 App 的唯一最近使用卡片；不打開最近使用畫面。未連線時保留 `GLOBAL_ACTION_HOME` 回桌面的行為，卡片保留。這不是強制停止／製造崩潰或清除資料；背景播放是否停止由 Android 與目標 App 決定。再次進入 App 會開始新的一次時間。
+- 使用服務 scope 的單次截止計時器，靜止畫面也能到時動作；沒有週期輪詢。截止前再次核對開關、螢幕、鎖屏與前景套件，shell helper 也再核對前景 task；不跨延遲保存節點。HOME 被接受或卡片確認移除才增加退出次數，失敗不在同一次使用內反覆重送，各實例保留獨立 450ms 冷卻。自身移除引起的前景變化保留成功回報，手動關閉或服務停止仍取消。
 - 只要有時間限制開關啟用，服務會透過 Android 的動態套件篩選接收其他 App 的視窗事件，以偵測離開與重算；僅核對前景套件，不掃描其他 App 的頁面內容。全部關閉後恢復註冊表套件篩選，動作派送始終限於註冊模組。無新增權限。
 - Threads 支援 `com.instagram.barcelona`，Dcard 支援 `com.sparkslab.dcardreader`；不包含網頁版、Facebook Lite 或其他變體。更新後將 Toolbox 無障礙服務關閉再開啟，載入新模組。
 - 尚未實機驗證五個 App 的實際到時退出、跨 App／鎖屏重算、背景影片與多視窗行為；Android 排程或廠商省電可能延後執行。桌面退出不保證影片停止播放。
@@ -54,12 +55,23 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 - 在「提醒設定」授予通知及準時提醒權限。Android 12 以上未授予準時提醒時改用非精確鬧鐘，畫面明確顯示「約 12:00」；Android 13 以上需要通知權限。重新開機、更新及時間異動會重新排程；強制停止 App 後需重新開啟 App。
 - 通知點入後按「確認並執行（150 寶石）」，只啟動台灣版 `com.garena.game.kgtw`，沿用遊戲的既有登入狀態。登入失效、載入過久、改版或不認得的彈窗會停止，不儲存帳密，不代過驗證。
 - 實機核對的路徑為大廳 → 商店 → 道具 → 寶石商店 → 魔法水晶 → 150 寶石詳情 → 購買 → 購買成功 → 今日限購 1/1。僅處理已核對的宣傳彈窗關閉按鈕，不進行活動領取或抽獎。
-- Unity 畫面沒有商店按鈕節點，使用 Android 11 以上無障礙截圖與手勢。只支援已核對的遊戲 `1.64.1.11`、橫向 `2400 × 1080` 畫面及 ASUS `com.asus.launcher` 最近使用清單。不同版本或畫面不符即停止；不保證其他手機相容。
+- Unity 畫面沒有商店按鈕節點，使用 Android 11 以上無障礙截圖與手勢。購買只支援已核對的遊戲 `1.64.1.11`、橫向 `2400 × 1080` 畫面。不同版本或畫面不符即停止；卡片清理已改用下節的本機授權介面，不再依賴 ASUS 最近使用清單佈局。
 - 只在使用者確認後執行。啟動等待 15 秒，各步動作後只觀察一次畫面並驗證下一狀態，沒有背景輪詢或盲目點擊重試；整段上限 120 秒，遊戲未啟動另有 30 秒看門檢查。請於執行時暫停操作手機。
 - 購買前在原有 DataStore 原子保存當日提交紀錄。即使購買後逾時或服務中斷，也不再自動購買第二次。辨識到「購買成功」與魔法水晶後才回報成功計數；辨識到原本已限購 1/1 時只略過購買，不增加計數。過期通知不執行。
-- 完成後回桌面，再從 ASUS 最近使用清單尋找內容描述恰為「傳說對決」的唯一遊戲快照，使用該卡片提供的無障礙關閉動作並核對已消失，不按「清除全部」。已確認今日買過時，設定頁可只重試移除卡片，不再次購買。移除卡片不等於強制停止或清除遊戲快取資料。
+- 購買前需先完成背景移除的本機連線。完成後共用 RecentsControl，依套件與 task 身分直接移除唯一遊戲卡片並確認消失，不回桌面開啟最近使用畫面，不按「清除全部」。已確認今日買過時，設定頁直接移除既有遊戲卡片，不重新啟動遊戲、不需無障礙、不再次購買。未連線／卡片不明確時顯示未完成清理並保留購買紀錄。移除卡片不等於強制停止或清除遊戲快取資料。
 - 截圖僅於本次流程的記憶體辨識後釋放，不保存或上傳。內附辨識資料僅為文字與按鈕的二值特徵，不含帳號、完整畫面或通知內容。
 - 此功能另需 `POST_NOTIFICATIONS`、`SCHEDULE_EXACT_ALARM`、`RECEIVE_BOOT_COMPLETED` 三個權限及無障礙截圖／手勢能力；更新後需重新啟用 Toolbox 無障礙服務以載入新增套件。原有媒體控制不變。
+
+## 功能五：背景移除卡片
+
+- `recents_control` 預設關閉。支援 Android 11 以上，不需 root 或另裝 Shizuku。內建 LibADB 配對與一次性 shell helper；所有連線固定到本機 `127.0.0.1`，沒有任意主機或任意命令輸入，不建立對外或常駐的特權服務。
+- 手機更新後，開啟此卡片並按「連線設定」。在開發者選項開啟「無線偵錯」，把系統設定與 Toolbox 以分割畫面並排。保持「使用配對碼配對裝置」視窗開啟，填入該視窗的配對連接埠與 6 位碼並按配對。再關閉配對視窗，填入無線偵錯主頁的連線連接埠，按「連線並驗證」。兩個連接埠通常不同，不需輸入 IP。
+- 配對碼只留在本次操作記憶體中，不保存、不上傳，設定頁不允許截圖／自動填入配對碼。ADB 身分私鑰以 Android Keystore AES-GCM 加密，放在不備份目錄，與 APK 簽章／GitHub 金鑰無關。配對授權仍由 Android 控制；在系統忘記 Toolbox 即可撤銷。重開機或偵錯埠改變後需重新連線；App 重啟只對上次連線埠嘗試一次，不背景尋找或輪詢。
+- 只允許 YouTube／Instagram／Threads／Facebook／Dcard／台灣版傳說對決六個固定套件。shell 端獨立驗證目前使用者、系統權限、5 秒請求有效期與唯一 task 的 base／real／top 套件；倒數退出另須確認仍為前景 task。移除前重讀身分，移除後只讀一次確認消失；歧義、跨 App task、逾時、失敗或沒有成功回報都不重送。背景清理遊戲不影響另一個 App 的卡片。
+- 只使用系統 `removeTask`，沒有 `force-stop`、清除資料、清除快取或清除全部操作。已不存在視為清理完成，不增加移除張數。移除 task 對程序／播放的影響由 Android 與原 App 決定，不能承諾保留或停止背景播放。
+- 未連線時，使用時間限制保留回桌面行為；傳說對決不啟動購買，已確認買過者保留卡片並提示連線，不自動切回畫面操作。關閉本機連線開關會中斷已開啟的配對／連線操作。
+- 使用非 SDK 的系統 task 介面，Android 或廠商改版可能不相容；連線時先驗證介面與權限，不支援時明確失敗。需在實際 ASUS 手機核對配對、卡片身分、到時退出與傳說對決清理。
+- 無新增正式版 uses-permission，明確移除舊版依賴造成的電話／儲存隱含權限。依賴與授權說明放在連線設定「開源授權」及 `app/src/main/assets/licenses/`。
 
 ## v1.2.0 的廣告略過方式
 
@@ -96,6 +108,7 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 | threads_usage_limit | true | 0 |
 | fb_usage_limit | true | 0 |
 | dcard_usage_limit | true | 0 |
+| recents_control | false | 0 |
 
 實際鍵為 <id>_enabled、<id>_blocked_count；既有 yt_ad_skip 開關及計數保留。module_order 是逗號分隔模組 ID 字串，首次依 ModuleRegistry.modules 順序建立。未知／重複 ID 會正規化，新模組附加末尾，ModuleCardOrder 投影成卡片順序。舊 youtube_shorts_* / instagram_reels_* 以 DataMigration 遷移且不覆寫新鍵。計數以 edit 原子更新並防止溢位。
 
@@ -106,13 +119,13 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 - 現有 release.jks、keystore.properties 必須沿用，請離線備份；不要重新產生或提交。產生腳本會拒絕覆寫。
 - Gradle 個別欄位優先讀 KEYSTORE_PATH、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD，缺少才讀本機 keystore.properties。Debug 不需要金鑰；Release 缺少配置會明確失敗。
 - Actions Secrets：KEYSTORE_BASE64、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD。KEYSTORE_PATH 由 Runner 暫存路徑決定，不必設 Secret。
-- Tag 必須精確等於 v<versionName>，例如 v1.4.0；workflow 用 JDK17 還原金鑰，assembleRelease + testDebugUnitTest + lintDebug、驗證簽章並發布 app-release.apk。每次 versionCode 嚴格遞增，下一修正版例如 9 / 1.4.1。
+- Tag 必須精確等於 v<versionName>，例如 v1.5.0；workflow 用 JDK17 還原金鑰，assembleRelease + testDebugUnitTest + lintDebug、驗證簽章並發布 app-release.apk。每次 versionCode 嚴格遞增，下一修正版例如 10 / 1.5.1。
 - UpdateConfig 固定 garytu001/personal-toolbox，Token 留空。HttpURLConnection / org.json 查最新 Release，DownloadManager 下載，核對套件／版本／簽章與可用的 SHA-256，FileProvider 喚起安裝；保留未知來源授權及續裝流程。
 - v1.2.0 只有 INTERNET、REQUEST_INSTALL_PACKAGES 兩個 uses-permission；v1.3.0 功能三新增權限見上節。無障礙／通知服務分別以 BIND_ACCESSIBILITY_SERVICE、BIND_NOTIFICATION_LISTENER_SERVICE 保護；沒有儲存或懸浮視窗權限。
 
 ## 驗收與範圍
 
-本機執行 assembleDebug、testDebugUnitTest、lintDebug、assembleRelease；65 項 JVM 測試通過，lint 為 0 錯誤／22 警告（SDK、依賴更新等既有提示）。測試覆蓋排序與群組投影、DataStore 升級保留、語意版本、截斷常態分佈、媒體切換順序／逾時／取消／回程驗證／防重複、Facebook 辨識條件，以及傳說對決排程、實機畫面特徵、價格／限購防護、購買提交持久化與單次流程。另新增時間限制的 5／20 分鐘截止、靜止畫面、離開重算、取消、防誤操作、失敗不重送、獨立冷卻及升級資料保留測試。v1.4.0 APK 已核對 applicationId、版本、SDK 與原正式簽章。測試與編譯不能取代實機驗證。
+本機驗證執行 assembleDebug、assembleDebugAndroidTest、testDebugUnitTest、lintDebug，正式發布另執行 assembleRelease。86 項 JVM 測試覆蓋排序、資料升級保留、媒體切換、購買防重複、使用時間截止與取消，以及唯一卡片選擇、跨 App／跨使用者防護、動作前重驗身分、逾時、單次移除與移除後驗證。新增 Android 裝置測試涵蓋 Keystore 加密身分持久化、原生配對元件載入與取消 TLS 連線；`Verify Background Recents` workflow 在 Android 11／16 模擬器驗證，並僅在乾淨模擬器建立可拋棄的測試 App，實際核對前景／背景移卡、保留其他卡片、逾時與非允許套件拒絕。不得對實機執行該可拋棄測試腳本。編譯與模擬器測試不能取代實機驗證。
 
 仍需手機核對：通知存取授權、YouTube 廣告辨識與媒體資訊、切回影片與播放進度、Facebook Reels 與 Stories、卡片拖曳、既有資料，以及正式 OTA 安裝。
 

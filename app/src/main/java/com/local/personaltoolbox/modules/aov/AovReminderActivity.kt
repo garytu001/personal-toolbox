@@ -22,6 +22,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.local.personaltoolbox.R
 import com.local.personaltoolbox.ToolboxApplication
 import com.local.personaltoolbox.databinding.ActivityAovReminderBinding
+import com.local.personaltoolbox.modules.recents.RecentsSetupActivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -58,6 +59,7 @@ class AovReminderActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= 31) openSettings(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
         }
         binding.confirmOpen.setOnClickListener { confirmOpen() }
+        binding.backgroundRemoval.setOnClickListener { startActivity(Intent(this, RecentsSetupActivity::class.java)) }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 app.preferences.settings.filterNotNull().collect { refresh(); runNotificationConfirmation() }
@@ -112,9 +114,21 @@ class AovReminderActivity : AppCompatActivity() {
 
     private fun confirmOpen() {
         if (busy) return
-        if (!AovRunRequests.ready) { binding.resultStatus.setText(R.string.aov_accessibility_required); return }
         val date = intent.getStringExtra(AovReminder.DATE_EXTRA) ?: AovReminderTime.today().toString()
         if (!AovReminderTime.isCurrentDay(date)) { refresh(); return }
+        if (!app.recentsControl.isReady()) { binding.resultStatus.setText(R.string.recents_required); return }
+        if (completedToday) {
+            busy = true
+            refresh()
+            app.applicationScope.launch {
+                try { removeConfirmedCard(date) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { AovRunRequests.status.value = getString(R.string.recents_remove_failed) }
+                finally { busy = false; if (!isDestroyed) refresh() }
+            }
+            return
+        }
+        if (!AovRunRequests.ready) { binding.resultStatus.setText(R.string.aov_accessibility_required); return }
         val launch = packageManager.getLaunchIntentForPackage(AovReminder.GAME_PACKAGE)
         if (launch == null) { binding.resultStatus.setText(R.string.aov_game_missing); return }
         busy = true
@@ -123,9 +137,9 @@ class AovReminderActivity : AppCompatActivity() {
         app.applicationScope.launch {
             try {
                 val claimed = store.claimOpen(date)
-                val cleanupOnly = !claimed && store.hasConfirmedSuccessToday()
-                if (!claimed && !cleanupOnly) {
+                if (!claimed) {
                     openedToday = store.hasOpenedToday()
+                    if (store.hasConfirmedSuccessToday()) removeConfirmedCard(date)
                     if (!isDestroyed) refresh()
                     return@launch
                 }
@@ -133,7 +147,7 @@ class AovReminderActivity : AppCompatActivity() {
                     store.releaseOpen(date)
                     return@launch
                 }
-                if (!AovRunRequests.begin(date, cleanupOnly)) {
+                if (!AovRunRequests.begin(date, cleanupOnly = false)) {
                     store.releaseOpen(date)
                     if (!isDestroyed) binding.resultStatus.setText(R.string.aov_accessibility_required)
                     return@launch
@@ -147,6 +161,15 @@ class AovReminderActivity : AppCompatActivity() {
             catch (_: Exception) { if (!isDestroyed) binding.resultStatus.setText(R.string.preferences_error) }
             finally { busy = false; if (!isDestroyed) refresh() }
         }
+    }
+
+    private suspend fun removeConfirmedCard(date: String) {
+        check(store.hasConfirmedSuccessToday() && AovReminderTime.isCurrentDay(date))
+        val result = app.recentsControl.remove(AovReminder.GAME_PACKAGE, foregroundOnly = false) {
+            app.preferences.settings.value?.isEnabled(AovReminder.ID) == true && AovReminderTime.isCurrentDay(date)
+        }
+        AovRunRequests.status.value = if (result.confirmed) "今日已購買，遊戲卡片已移除或不存在"
+            else getString(R.string.recents_remove_failed)
     }
 
     private suspend fun cancelLaunch(date: String) {

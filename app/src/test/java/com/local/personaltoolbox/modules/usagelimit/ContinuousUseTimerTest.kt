@@ -1,6 +1,7 @@
 package com.local.personaltoolbox.modules.usagelimit
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.advanceTimeBy
@@ -18,6 +19,52 @@ class ContinuousUseTimerTest {
         var successes = 0
         fun timer(scope: CoroutineScope, now: () -> Long, minutes: Int = 5) = ContinuousUseTimer(
             scope, minutes * 60_000L, now, { allowed }, { exits++; accepted }, { successes++ }, 450L)
+    }
+
+    @Test fun ownRemovalForegroundChangeDoesNotCancelItsSuccessReceipt() = runTest {
+        val receipt = CompletableDeferred<Boolean>()
+        var count = 0
+        val timer = ContinuousUseTimer(this, 300_000, { testScheduler.currentTime }, { true }, { receipt.await() }, { count++ }, 450)
+        timer.observe(true)
+        advanceTimeBy(300_000); runCurrent()
+        timer.observe(false)
+        receipt.complete(true); runCurrent()
+        assertEquals(1, count)
+    }
+
+    @Test fun newVisitDuringReceiptWaitGetsItsOwnDeadline() = runTest {
+        val receipt = CompletableDeferred<Boolean>()
+        var calls = 0
+        var count = 0
+        val timer = ContinuousUseTimer(this, 300_000, { testScheduler.currentTime }, { true }, {
+            calls++
+            if (calls == 1) receipt.await() else true
+        }, { count++ }, 450)
+        timer.observe(true)
+        advanceTimeBy(300_000); runCurrent()
+        timer.observe(false)
+        advanceTimeBy(1_000)
+        timer.observe(true)
+        advanceTimeBy(1_000)
+        receipt.complete(true); runCurrent()
+        assertEquals(1, count)
+        advanceTimeBy(298_999); runCurrent()
+        assertEquals(1, count)
+        advanceTimeBy(1); runCurrent()
+        assertEquals(2, count)
+    }
+
+    @Test fun explicitDisableCancelsAnInFlightReceiptWithoutRestartingAVisit() = runTest {
+        val receipt = CompletableDeferred<Boolean>()
+        var count = 0
+        val timer = ContinuousUseTimer(this, 300_000, { testScheduler.currentTime }, { true }, { receipt.await() }, { count++ }, 450)
+        timer.observe(true)
+        advanceTimeBy(300_000); runCurrent()
+        timer.observe(false); timer.observe(true)
+        timer.cancel()
+        receipt.complete(true)
+        advanceTimeBy(600_000); runCurrent()
+        assertEquals(0, count)
     }
 
     @Test fun exitsAtTwentyMinutesWithoutAnyFurtherEvents() = runTest {

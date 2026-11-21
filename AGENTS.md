@@ -15,8 +15,9 @@
 8. 廣告辨識只使用可見播放器廣告元件，不以首頁「Sponsored」文字觸發，排除 Shorts。先保存媒體識別；確認切至不同影片後才送上一部，切回原片且廣告消失後才計數。不支援 next/previous 或缺少媒體資訊時不操作；單階段逾時 3 秒，同一廣告最多發起一次切換且相鄰嘗試至少隔 10 秒。不要宣稱保證恢復原進度。
 9. 非同步模組使用 ModuleEnvironment 的服務 scope／設定／成功回報與 ToolboxModule hooks。關閉模組、手動點擊、停止服務時取消；服務 scope 必須取消，不跨延遲保留 AccessibilityNodeInfo。切換自身可能觸發捲動事件，不可因此取消自己的回程；等待中的一般捲動會取消。
 10. 短影音卡片包含 yt_shorts、ig_reels、fb_reels，各自開關與計數；FB 新增預設 false。Facebook 只偵測明確選中的 Reels 分頁或同時具備 Reels 標題、全畫面捲動播放器與右側垂直互動按鈕，排除 Stories；不要因「影片」文字或 ImmersiveActivity 本身就攔截，也不要猜數字 ID。新版本仍需實機核對。
-11. 功能三 `aov_crystal` 預設 false，每日台灣時間 12:00 通知、使用者確認後才啟動。只購買 1 個 150 寶石魔法水晶，不抽獎。僅沿用登入，不存帳密。遊戲版本與畫面尺寸須符合實機核對的辨識檔，畫面不符即停止；不得加入背景輪詢。每個手勢前核對前景套件，每步後只截圖一次驗證下一狀態；截圖不保存／上傳。購買前原子保存當日提交紀錄，結果不明也不得重購；只有辨識到成功才計數。清理只移除 ASUS 最近清單中明確標示「傳說對決」的唯一卡片，禁止清除全部。Module 的多套件監聽由 packageNames 宣告，不在容器依 ID 分支。
-12. 使用時間限制卡片含 `yt_usage_limit` 20 分鐘與 `ig_usage_limit`／`threads_usage_limit`／`fb_usage_limit`／`dcard_usage_limit` 各 5 分鐘，皆預設 true。計算每次連續前景使用，離開／鎖屏／關閉／服務停止即重算，點擊與捲動不重算。以服務 scope 單次截止計時，不輪詢；動作前再次核對前景、螢幕及開關，以 HOME 回桌面，不能宣稱強制閃退或停止背景播放。透過通用 foreground hooks 接收離開事件，只有有啟用的觀察模組時動態接收所有套件事件；不讀其他 App 內容，動作仍依註冊表派送。
+11. 功能三 `aov_crystal` 預設 false，每日台灣時間 12:00 通知、使用者確認後才啟動。只購買 1 個 150 寶石魔法水晶，不抽獎。僅沿用登入，不存帳密。遊戲版本與畫面尺寸須符合實機核對的辨識檔，畫面不符即停止；不得加入背景輪詢。每個手勢前核對前景套件，每步後只截圖一次驗證下一狀態；截圖不保存／上傳。購買前原子保存當日提交紀錄，結果不明也不得重購；只有辨識到成功才計數。使用者已授權改以共用 RecentsControl 背景移除遊戲唯一卡片，不再開啟最近使用畫面或依賴 ASUS 卡片文字。今日已確認成功時，清理按鈕不啟動遊戲、不需無障礙、不購買。未連線不啟動購買流程；清理不得清除全部或強制停止套件。Module 的多套件監聽由 packageNames 宣告，不在容器依 ID 分支。
+12. 使用時間限制卡片含 `yt_usage_limit` 20 分鐘與 `ig_usage_limit`／`threads_usage_limit`／`fb_usage_limit`／`dcard_usage_limit` 各 5 分鐘，皆預設 true。計算每次連續前景使用，離開／鎖屏／關閉／服務停止即重算，點擊與捲動不重算。以服務 scope 單次截止計時，不輪詢；動作前再次核對前景、螢幕及開關，背景連線可用時只移除目標唯一卡片，未連線保留原 HOME 行為。不能宣稱強制閃退或停止背景播放。自身移除造成的前景變化不得取消成功回報，但關閉／停止仍取消；等待回報時的新一次進入要有獨立截止時間。透過通用 foreground hooks 接收離開事件，只有有啟用的觀察模組時動態接收所有套件事件；不讀其他 App 內容，動作仍依註冊表派送。
+13. `recents_control` 預設 false，內建本機 ADB 配對，不依賴 Shizuku。只連 127.0.0.1，不接收任意主機、命令、套件或 task ID。ADB 金鑰在 noBackupFilesDir 以 Android Keystore AES-GCM 加密，配對碼不儲存；不是 GitHub Token。手機端先開啟無線偵錯並分割畫面配對，連線埠與配對埠分開輸入。逐次以已安裝 APK 的一次性 app_process 讀取系統卡片；只允許六個固定套件、目前使用者、唯一且 base／real／top 身分一致的卡片；移除前重讀、移除後只驗證一次，逾時與歧義即停止，不輪詢、不重送、不清除全部、不清除資料。shell helper 也必須獨立驗證，不能只依賴 UI。僅驗證移除成功才計數，已不存在不重複計數。
 
 ## DataStore
 
@@ -28,7 +29,7 @@
 
 ## 版本、簽章與驗收
 
-- 目前 versionCode 8 / versionName 1.4.0。每次發布 versionCode 嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 v<versionName>。
+- 目前 versionCode 9 / versionName 1.5.0。每次發布 versionCode 嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 v<versionName>。
 - 正式更新來源固定公開倉庫 garytu001/personal-toolbox，不得恢復 YOUR_GITHUB_USERNAME。GITHUB_TOKEN 留空，手機不存放倉庫 Token。
 - applicationId 與正式簽章金鑰不可變。Release 優先讀 KEYSTORE_PATH、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD 環境變數，缺少欄位才讀 keystore.properties；金鑰與密碼不得提交。
 - 修改完成執行 gradlew.bat assembleDebug testDebugUnitTest lintDebug（Unix 用 ./gradlew），修正必要錯誤，說明未實機驗證範圍。編譯成功不是實機驗證。

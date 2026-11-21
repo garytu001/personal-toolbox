@@ -25,6 +25,27 @@ class ToolboxPreferencesTest {
     @get:Rule val temporary = TemporaryFolder()
     private val definitions = listOf(ModuleDefinition("yt_shorts", 1), ModuleDefinition("ig_reels", 2))
 
+    @Test fun backgroundRecentsUpgradeStartsDisabledAndPreservesLimitsAndOrder() = runBlocking {
+        val file = temporary.newFile("recents-upgrade.preferences_pb")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(scope = scope) { file }
+            val prior = ModuleRegistry.modules.filterNot { it.id == "recents_control" }
+            val old = ToolboxPreferences(store, scope, prior)
+            old.setEnabled("yt_usage_limit", false)
+            old.incrementBlockedCount("ig_usage_limit")
+            val order = prior.map { it.id }.reversed()
+            old.setModuleOrder(order)
+            val updated = ToolboxPreferences(store, scope, ModuleRegistry.modules)
+            val state = withTimeout(5_000) { updated.settings.filterNotNull().first() }
+            assertFalse(state.isEnabled("recents_control"))
+            assertEquals(0, state.blockedCount("recents_control"))
+            assertFalse(state.isEnabled("yt_usage_limit"))
+            assertEquals(1, state.blockedCount("ig_usage_limit"))
+            assertEquals(order + "recents_control", state.moduleOrder)
+        } finally { scope.cancel() }
+    }
+
     @Test fun addingUsageLimitsPreservesOldDataAndKeepsEachNewSwitchAndCountIndependent() = runBlocking {
         val file = temporary.newFile("usage-limits.preferences_pb")
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)

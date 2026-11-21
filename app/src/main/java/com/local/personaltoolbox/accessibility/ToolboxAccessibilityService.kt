@@ -78,19 +78,20 @@ class ToolboxAccessibilityService : AccessibilityService() {
             event.eventType != AccessibilityEvent.TYPE_VIEW_CLICKED &&
             event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
         val settings = app.preferences.settings.value ?: return
-        val root = rootInActiveWindow ?: run { notifyForeground(null); cancelPending(); return }
+        val root = rootInActiveWindow ?: run { notifyForeground(null); foregroundLost(); return }
         try {
             // The current root is authoritative for foreground lifetime, including delayed events.
             val foregroundPackage = root.packageName?.toString()
             notifyForeground(foregroundPackage)
             // A delayed event must never trigger an action in a different foreground application.
-            if (foregroundPackage != sourcePackage) { cancelPending(); return }
-            val candidates = modules[sourcePackage] ?: run { cancelPending(); return }
+            if (foregroundPackage != sourcePackage) { foregroundLost(); return }
+            val candidates = modules[sourcePackage] ?: run { foregroundLost(); return }
             if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
                 candidates.forEach { it.onUserInteraction(event.eventType) }
                 return
             }
-            allModules.filter { sourcePackage !in it.packageNames || !settings.isEnabled(it.id) }.forEach { it.cancelPending() }
+            allModules.filter { sourcePackage !in it.packageNames }.forEach { it.onForegroundLost() }
+            allModules.filter { !settings.isEnabled(it.id) }.forEach { it.cancelPending() }
             val enabled = candidates.filter { settings.isEnabled(it.id) }
             enabled.forEach { it.observeWindow(root) }
             for (module in enabled) {
@@ -133,6 +134,7 @@ class ToolboxAccessibilityService : AccessibilityService() {
     }
 
     private fun cancelPending() { allModules.forEach { it.cancelPending() } }
+    private fun foregroundLost() { allModules.forEach { it.onForegroundLost() } }
     private fun stop() {
         notifyForeground(null)
         cancelPending()

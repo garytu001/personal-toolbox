@@ -8,5 +8,5 @@
     android:canTakeScreenshot="true"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="0"
-    android:packageNames="com.google.android.youtube,com.instagram.android,com.facebook.katana,com.garena.game.kgtw,com.asus.launcher,com.instagram.barcelona,com.sparkslab.dcardreader"
+    android:packageNames="com.google.android.youtube,com.instagram.android,com.facebook.katana,com.garena.game.kgtw,com.instagram.barcelona,com.sparkslab.dcardreader"
     android:settingsActivity="com.local.personaltoolbox.MainActivity" />
