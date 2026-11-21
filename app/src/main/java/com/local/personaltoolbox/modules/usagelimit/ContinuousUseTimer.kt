@@ -11,7 +11,7 @@ internal class ContinuousUseTimer(
     private val limitMillis: Long,
     private val now: () -> Long,
     private val isAllowed: () -> Boolean,
-    private val exit: suspend () -> Boolean,
+    private val exit: suspend (mayDispatch: () -> Boolean) -> Boolean,
     private val onExited: () -> Unit,
     private val cooldownMillis: Long,
 ) {
@@ -20,7 +20,8 @@ internal class ContinuousUseTimer(
     private var lastAttempt: Long? = null
     private var exiting = false
     private var nextVisitAt: Long? = null
-    private var generation = 0L
+    @Volatile private var generation = 0L
+    @Volatile private var exitVisitValid = false
 
     init { require(limitMillis > 0); require(cooldownMillis >= 0) }
 
@@ -28,7 +29,7 @@ internal class ContinuousUseTimer(
         // An accepted removal itself changes the foreground before its receipt arrives.
         // Keep that receipt, while remembering any genuinely new visit separately.
         if (exiting) {
-            if (!isTargetForeground) { inForeground = false; nextVisitAt = null }
+            if (!isTargetForeground) { inForeground = false; nextVisitAt = null; exitVisitValid = false }
             else if (!inForeground) { inForeground = true; nextVisitAt = now() }
             return
         }
@@ -49,7 +50,8 @@ internal class ContinuousUseTimer(
             // Never repeat an exit request on content events in the same visit.
             lastAttempt = time
             exiting = true
-            try { if (exit()) onExited() }
+            exitVisitValid = true
+            try { if (exit { ticket == generation && exitVisitValid }) onExited() }
             finally {
                 if (ticket == generation) {
                     exiting = false
@@ -63,6 +65,7 @@ internal class ContinuousUseTimer(
 
     fun cancel() {
         generation++
+        exitVisitValid = false
         deadline?.cancel()
         deadline = null
         inForeground = false

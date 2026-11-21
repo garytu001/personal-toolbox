@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
 import android.os.Looper
+import com.local.personaltoolbox.BuildConfig
 
 /** Loaded from our signed APK by app_process through the user's local, paired ADB session.
  * No socket, exported service, arbitrary shell interface or persistent privileged daemon. */
@@ -18,7 +19,16 @@ object RecentsCommand {
     @JvmStatic fun main(args: Array<String>) {
         val nonce = args.lastOrNull() ?: return
         if (!RecentsProtocol.validNonce(nonce)) return
-        val status = try { execute(args) } catch (_: Throwable) { "FAILED" }
+        val status = try { execute(args) } catch (error: Throwable) {
+            if (BuildConfig.DEBUG) {
+                var cause: Throwable? = error
+                repeat(4) {
+                    cause?.let { System.err.println("Recents helper: ${it.javaClass.simpleName}: ${it.message}") }
+                    cause = cause?.cause
+                }
+            }
+            "FAILED"
+        }
         println(RecentsProtocol.reply(nonce, status))
         System.out.flush()
         kotlin.system.exitProcess(0)
@@ -68,6 +78,6 @@ object RecentsCommand {
         RecentCard(task.persistentId, task.javaClass.getField("userId").getInt(task),
             task.baseIntent.component?.packageName ?: task.baseIntent.`package`,
             (task.javaClass.getField("realActivity").get(task) as? ComponentName)?.packageName,
-            task.topActivity?.packageName)
+            task.topActivity?.packageName, task.javaClass.getField("lastActiveTime").getLong(task))
     }
 }

@@ -15,6 +15,7 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicLong
+import java.security.interfaces.RSAPrivateCrtKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -105,7 +106,8 @@ class RecentsControl(private val app: ToolboxApplication) {
             val identity = withContext(Dispatchers.IO) { AdbIdentity.load(app) }
             val connected = blocking(7_000, { candidate.get()?.close() }) {
                 val client = AdbConnection.Builder("127.0.0.1", port).setApi(Build.VERSION.SDK_INT)
-                    .setPrivateKey(identity.privateKey).setCertificate(identity.certificate).setDeviceName("Toolbox").build()
+                    .setPrivateKey(ConnectionKey(identity.privateKey as RSAPrivateCrtKey))
+                    .setCertificate(identity.certificate).setDeviceName("Toolbox").build()
                 candidate.set(client)
                 connecting.set(client)
                 check(ticket == generation.get() && enabled())
@@ -121,7 +123,8 @@ class RecentsControl(private val app: ToolboxApplication) {
             report(R.string.recents_connected, ready = true)
             true
         } catch (e: CancellationException) {
-            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { candidate.get()?.close() }
+            withContext(kotlinx.coroutines.NonCancellable + Dispatchers.IO) { try { candidate.get()?.close() } catch (_: Exception) { } }
+            connection.compareAndSet(candidate.get(), null)
             report(R.string.recents_disconnected)
             throw e
         } catch (_: Exception) {
@@ -149,7 +152,8 @@ class RecentsControl(private val app: ToolboxApplication) {
         if (!allowed()) return@withLock RemovalResult.BLOCKED
         val client = connection.get() ?: return@withLock RemovalResult.NOT_READY
         try {
-            val result = when (command(client, "remove", target, foregroundOnly)) {
+            val ticket = generation.get()
+            val result = when (command(client, "remove", target, foregroundOnly) { ticket == generation.get() && enabled() && allowed() }) {
                 "REMOVED" -> RemovalResult.REMOVED
                 "ABSENT" -> RemovalResult.ABSENT
                 "BLOCKED" -> RemovalResult.BLOCKED
@@ -162,7 +166,8 @@ class RecentsControl(private val app: ToolboxApplication) {
         catch (_: Exception) { disconnect(); RemovalResult.FAILED }
     }
 
-    private suspend fun command(client: AdbConnection, operation: String, target: String, foregroundOnly: Boolean): String? {
+    private suspend fun command(client: AdbConnection, operation: String, target: String, foregroundOnly: Boolean,
+        allowed: () -> Boolean = { true }): String? {
         require(operation == "probe" || (operation == "remove" && target in RecentsTargets.packages))
         val nonce = UUID.randomUUID().toString().replace("-", "")
         val expiry = SystemClock.elapsedRealtime() + 5_000
@@ -172,6 +177,7 @@ class RecentsControl(private val app: ToolboxApplication) {
         val script = "CLASSPATH=${RecentsProtocol.quote(app.applicationInfo.sourceDir)} /system/bin/app_process /system/bin " +
             "com.local.personaltoolbox.modules.recents.RecentsCommand $args"
         val output = blocking(6_000, { client.close(); connection.compareAndSet(client, null) }) {
+            check(allowed()) // Re-check after dispatching to the I/O worker, before opening any command stream.
             client.open("shell:$script").use { stream ->
                 stream.openInputStream().use { input ->
                     val buffer = ByteArray(1024)
@@ -210,8 +216,18 @@ class RecentsControl(private val app: ToolboxApplication) {
                     if (continuation.isActive) continuation.resume(result)
                     else try { abort() } catch (_: Exception) { }
                 } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(e) }
+                catch (e: LinkageError) {
+                    if (continuation.isActive) continuation.resumeWithException(IllegalStateException("unsupported_pairing_runtime", e))
+                }
             }
         }
+    }
+
+    // LibADB destroys per-connection keys on close and caches its SSLContext. Keep this persistent
+    // paired identity reusable across connections; its encrypted file remains app-private.
+    private class ConnectionKey(key: RSAPrivateCrtKey) : RSAPrivateCrtKey by key {
+        override fun destroy() = Unit
+        override fun isDestroyed() = false
     }
 
     companion object {

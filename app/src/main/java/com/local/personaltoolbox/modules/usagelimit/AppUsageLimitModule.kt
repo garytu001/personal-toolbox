@@ -23,13 +23,13 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
         this.environment = environment
         timer = ContinuousUseTimer(environment.scope, minutes * 60_000L, SystemClock::elapsedRealtime,
             isAllowed = { isTargetForeground(environment) },
-            exit = {
+            exit = { mayDispatch ->
                 // Both the service and the privileged helper independently verify the foreground.
                 try {
                     val control = (environment.service.application as ToolboxApplication).recentsControl
-                    if (!isTargetForeground(environment)) false
+                    if (!mayDispatch() || !isTargetForeground(environment)) false
                     else if (control.isReady()) {
-                        control.remove(packageName, foregroundOnly = true) { isTargetForeground(environment) } == RemovalResult.REMOVED
+                        control.remove(packageName, foregroundOnly = true) { mayDispatch() && isTargetForeground(environment) } == RemovalResult.REMOVED
                     } else {
                         // Preserve the existing time limit when the optional connection is unavailable.
                         environment.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)

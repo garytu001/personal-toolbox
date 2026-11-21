@@ -125,7 +125,7 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 
 ## 驗收與範圍
 
-本機驗證執行 assembleDebug、assembleDebugAndroidTest、testDebugUnitTest、lintDebug，正式發布另執行 assembleRelease。86 項 JVM 測試覆蓋排序、資料升級保留、媒體切換、購買防重複、使用時間截止與取消，以及唯一卡片選擇、跨 App／跨使用者防護、動作前重驗身分、逾時、單次移除與移除後驗證。新增 Android 裝置測試涵蓋 Keystore 加密身分持久化、原生配對元件載入與取消 TLS 連線；`Verify Background Recents` workflow 在 Android 11／16 模擬器驗證，並僅在乾淨模擬器建立可拋棄的測試 App，實際核對前景／背景移卡、保留其他卡片、逾時與非允許套件拒絕。不得對實機執行該可拋棄測試腳本。編譯與模擬器測試不能取代實機驗證。
+本機驗證執行 assembleDebug、assembleDebugAndroidTest、testDebugUnitTest、lintDebug，正式發布另執行 assembleRelease。88 項 JVM 測試覆蓋排序、資料升級保留、媒體切換、購買防重複、使用時間截止與取消，以及唯一卡片選擇、跨 App／跨使用者防護、動作前重驗身分、新一次進入不受舊倒數影響、逾時、單次移除與移除後驗證。新增 Android 裝置測試涵蓋 Keystore 加密身分持久化、原生配對金鑰交換與取消 TLS 連線；`Verify Background Recents` workflow 在 Android 11／16 模擬器驗證，並僅在乾淨模擬器建立可拋棄的測試 App，實際核對前景／背景移卡、保留其他卡片、逾時與非允許套件拒絕。不得對實機執行該可拋棄測試腳本。編譯與模擬器測試不能取代實機驗證。
 
 仍需手機核對：通知存取授權、YouTube 廣告辨識與媒體資訊、切回影片與播放進度、Facebook Reels 與 Stories、卡片拖曳、既有資料，以及正式 OTA 安裝。
 

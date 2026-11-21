@@ -21,6 +21,23 @@ class ContinuousUseTimerTest {
             scope, minutes * 60_000L, now, { allowed }, { exits++; accepted }, { successes++ }, 450L)
     }
 
+    @Test fun leavingAndReturningInvalidatesAnOldExitStillWaitingToDispatch() = runTest {
+        val release = CompletableDeferred<Unit>()
+        var commands = 0
+        val timer = ContinuousUseTimer(this, 300_000, { testScheduler.currentTime }, { true }, { mayDispatch ->
+            release.await()
+            if (mayDispatch()) { commands++; true } else false
+        }, {}, 450)
+        timer.observe(true)
+        advanceTimeBy(300_000); runCurrent()
+        timer.observe(false)
+        timer.observe(true)
+        release.complete(Unit); runCurrent()
+        assertEquals(0, commands)
+        advanceTimeBy(300_000); runCurrent()
+        assertEquals(1, commands)
+    }
+
     @Test fun ownRemovalForegroundChangeDoesNotCancelItsSuccessReceipt() = runTest {
         val receipt = CompletableDeferred<Boolean>()
         var count = 0

@@ -23,6 +23,8 @@ def shell(command):
 
 assert shell("getprop ro.kernel.qemu") == "1", "Emulator required; physical devices are forbidden"
 assert f"package:{TARGET}" not in shell(f"pm list packages {TARGET}").splitlines(), "Refusing to replace an existing app"
+# Gradle's connected tests uninstall their target when finished. Install our helper APK explicitly.
+run("adb", "install", "-r", "app/build/outputs/apk/debug/app-debug.apk")
 apk = shell(f"pm path {APP}").removeprefix("package:")
 assert apk.startswith("/data/app/") and apk.endswith(".apk") and "\n" not in apk
 user = shell("am get-current-user")
@@ -30,7 +32,7 @@ user = shell("am get-current-user")
 
 def request(operation, target="-", foreground=False, expected="READY", expired=False):
     nonce = uuid.uuid4().hex
-    expires = int(float(shell("cat /proc/uptime").split()[0]) * 1000) + (-1 if expired else 4800)
+    expires = int(float(shell("cat /proc/uptime").split()[0]) * 1000) + (-1 if expired else 5000)
     args = [operation, target, user, "1" if foreground else "0", str(expires), nonce]
     command = f"CLASSPATH={shlex.quote(apk)} /system/bin/app_process /system/bin {APP}.modules.recents.RecentsCommand "
     output = shell(command + " ".join(map(shlex.quote, args)))

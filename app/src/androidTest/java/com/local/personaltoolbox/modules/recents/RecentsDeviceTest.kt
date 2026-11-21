@@ -62,11 +62,13 @@ class RecentsDeviceTest {
         val ended = AtomicBoolean(false)
         ServerSocket(0, 1, InetAddress.getByName("127.0.0.1")).use { server ->
             val peer = Thread {
-                server.accept().use { socket ->
-                    accepted.countDown()
-                    // Block until cancellation closes the client, never complete the TLS handshake.
-                    try { while (socket.getInputStream().read() >= 0) { } } catch (_: Exception) { }
-                }
+                try {
+                    server.accept().use { socket ->
+                        accepted.countDown()
+                        // Block until cancellation closes the client, never complete the TLS handshake.
+                        while (socket.getInputStream().read() >= 0) { }
+                    }
+                } catch (_: Exception) { }
             }.apply { isDaemon = true; start() }
             val worker = Thread {
                 try { pairing.pair(server.localPort, "123456".toByteArray(), identity.privateKey, identity.certificate) }

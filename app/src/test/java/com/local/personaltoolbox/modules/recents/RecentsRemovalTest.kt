@@ -97,6 +97,11 @@ class RecentsRemovalTest {
         assertEquals(RemovalResult.BLOCKED, host.run())
         assertTrue(host.removed.isEmpty())
     }
+    @Test fun aNewVisitAfterRequestIssuanceCannotBeRemovedByTheOldCountdown() {
+        val host = Host().apply { snapshot = listOf(game.copy(lastActiveTime = 1_001), other) }
+        assertEquals(RemovalResult.BLOCKED, host.run(true))
+        assertTrue(host.removed.isEmpty())
+    }
     @Test fun leavingOrLockingDuringLastSnapshotAbortsBeforeRemoval() {
         val host = Host().apply { onRead = { count -> if (count == 2) top = other.taskId to other.topPackage } }
         assertEquals(RemovalResult.BLOCKED, host.run(true))
