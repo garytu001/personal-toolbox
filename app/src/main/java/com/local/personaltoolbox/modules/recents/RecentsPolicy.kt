@@ -17,7 +17,6 @@ internal data class RecentCard(
     val basePackage: String?,
     val realPackage: String?,
     val topPackage: String?,
-    val lastActiveTime: Long = 0,
 )
 
 internal object RecentsPolicy {
@@ -47,6 +46,7 @@ internal class RecentsRemoval(private val host: Host) {
         fun interactiveAndUnlocked(): Boolean
         fun foreground(): Pair<Int, String?>?
         fun now(): Long
+        fun confirmDispatch(): Boolean = true
         fun remove(taskId: Int): Boolean
     }
 
@@ -54,10 +54,11 @@ internal class RecentsRemoval(private val host: Host) {
         if (target !in RecentsTargets.packages || expiresAt - host.now() !in 0..5_000) return RemovalResult.BLOCKED
         return try {
             val initial = RecentsPolicy.uniqueCard(host.cards(), target, userId) ?: return RemovalResult.ABSENT
-            // A visit resumed after this request was issued belongs to a new countdown.
-            if (foregroundOnly && initial.lastActiveTime > expiresAt - 5_000) return RemovalResult.BLOCKED
             if (!host.interactiveAndUnlocked() ||
                 (foregroundOnly && host.foreground() != (initial.taskId to target))) return RemovalResult.BLOCKED
+            if (!host.confirmDispatch()) return RemovalResult.BLOCKED
+            // Android 11 getRunningTasks touches lastActiveTime. Only stable task identity belongs
+            // in this equality check; the client reauthorizes the foreground visit at dispatch.
             if (RecentsPolicy.uniqueCard(host.cards(), target, userId) != initial || host.now() > expiresAt) return RemovalResult.BLOCKED
             if (!host.interactiveAndUnlocked() ||
                 (foregroundOnly && host.foreground() != (initial.taskId to target))) return RemovalResult.BLOCKED

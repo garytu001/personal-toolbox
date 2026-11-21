@@ -11,6 +11,10 @@ import android.os.PowerManager
 import android.os.Process
 import android.os.SystemClock
 import android.os.Looper
+import android.system.Os
+import android.system.OsConstants
+import android.system.StructPollfd
+import java.io.FileDescriptor
 import com.local.personaltoolbox.BuildConfig
 
 /** Loaded from our signed APK by app_process through the user's local, paired ADB session.
@@ -67,8 +71,30 @@ object RecentsCommand {
                 !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
             override fun foreground() = manager.getRunningTasks(1).singleOrNull()?.let { it.id to it.topActivity?.packageName }
             override fun now() = SystemClock.elapsedRealtime()
+            override fun confirmDispatch(): Boolean {
+                println(RecentsProtocol.reply(args[5], "PREPARED"))
+                System.out.flush()
+                return awaitCommit(args[5], expiresAt)
+            }
             override fun remove(taskId: Int) = method.invoke(service, taskId) == true
         }).run(target, user, foregroundOnly, expiresAt).name
+    }
+
+    private fun awaitCommit(nonce: String, expiresAt: Long): Boolean {
+        val expected = "COMMIT:$nonce\n".toByteArray(Charsets.US_ASCII)
+        val received = ByteArray(expected.size)
+        var offset = 0
+        val descriptor = StructPollfd().apply { fd = FileDescriptor.`in`; events = OsConstants.POLLIN.toShort() }
+        // A bounded wait for pipe I/O, not application/window polling. No worker or daemon survives
+        // missing authorization, a disconnected client or the request's original deadline.
+        while (offset < received.size) {
+            val remaining = expiresAt - SystemClock.elapsedRealtime()
+            if (remaining <= 0 || Os.poll(arrayOf(descriptor), remaining.toInt()) <= 0) return false
+            val count = Os.read(FileDescriptor.`in`, received, offset, received.size - offset)
+            if (count <= 0) return false
+            offset += count
+        }
+        return received.contentEquals(expected)
     }
 
     private fun taskService(): Any = Class.forName("android.app.ActivityTaskManager")
@@ -78,6 +104,6 @@ object RecentsCommand {
         RecentCard(task.persistentId, task.javaClass.getField("userId").getInt(task),
             task.baseIntent.component?.packageName ?: task.baseIntent.`package`,
             (task.javaClass.getField("realActivity").get(task) as? ComponentName)?.packageName,
-            task.topActivity?.packageName, task.javaClass.getField("lastActiveTime").getLong(task))
+            task.topActivity?.packageName)
     }
 }

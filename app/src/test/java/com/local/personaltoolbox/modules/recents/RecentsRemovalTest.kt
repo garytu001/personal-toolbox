@@ -16,11 +16,13 @@ class RecentsRemovalTest {
         var time = 1_000L
         var accepted = true
         var actuallyRemoves = true
+        var authorized = true
         val removed = mutableListOf<Int>()
         override fun cards(): List<RecentCard> { onRead(++readCount); return snapshot }
         override fun interactiveAndUnlocked() = unlocked
         override fun foreground() = top
         override fun now() = time
+        override fun confirmDispatch() = authorized
         override fun remove(taskId: Int): Boolean {
             removed += taskId
             if (accepted && actuallyRemoves) snapshot = snapshot.filterNot { it.taskId == taskId }
@@ -97,8 +99,8 @@ class RecentsRemovalTest {
         assertEquals(RemovalResult.BLOCKED, host.run())
         assertTrue(host.removed.isEmpty())
     }
-    @Test fun aNewVisitAfterRequestIssuanceCannotBeRemovedByTheOldCountdown() {
-        val host = Host().apply { snapshot = listOf(game.copy(lastActiveTime = 1_001), other) }
+    @Test fun clientCancellationBeforeCommitPreventsRemoval() {
+        val host = Host().apply { authorized = false }
         assertEquals(RemovalResult.BLOCKED, host.run(true))
         assertTrue(host.removed.isEmpty())
     }

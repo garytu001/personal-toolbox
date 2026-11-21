@@ -34,13 +34,14 @@ assert apk.startswith("/data/app/") and apk.endswith(".apk") and "\n" not in apk
 user = shell("am get-current-user")
 
 
-def request(operation, target="-", foreground=False, expected="READY", expired=False):
+def request(operation, target="-", foreground=False, expected="READY", expired=False, authorize=True):
     nonce = uuid.uuid4().hex
     expires = int(float(shell("cat /proc/uptime").split()[0]) * 1000) + (-1 if expired else 5000)
     args = [operation, target, user, "1" if foreground else "0", str(expires), nonce]
     command = f"CLASSPATH={shlex.quote(apk)} /system/bin/app_process /system/bin {APP}.modules.recents.RecentsCommand "
-    output = shell(command + " ".join(map(shlex.quote, args)))
-    receipts = [line.strip() for line in output.splitlines() if line.startswith("TBRC1|")]
+    output = subprocess.check_output(["adb", "shell", command + " ".join(map(shlex.quote, args))],
+        input=f"COMMIT:{nonce}\n" if authorize else "", text=True, stderr=subprocess.STDOUT, timeout=10)
+    receipts = [line.strip() for line in output.splitlines() if line.startswith("TBRC1|") and line.strip() != f"TBRC1|{nonce}|PREPARED"]
     assert receipts == [f"TBRC1|{nonce}|{expected}"], output
     print(f"{operation} {target}: {expected}", flush=True)
 
@@ -86,6 +87,7 @@ public class FixtureActivity extends android.app.Activity {{
     try:
         shell("am start -W -a android.settings.SETTINGS")
         shell(f"am start -W -n {TARGET}/.FixtureActivity")
+        request("remove", TARGET, foreground=True, expected="BLOCKED", authorize=False)
         request("remove", TARGET, foreground=True, expected="REMOVED")
         assert "com.android.settings" in shell("dumpsys activity recents"), "Unrelated card was removed"
         request("remove", TARGET, expected="ABSENT")

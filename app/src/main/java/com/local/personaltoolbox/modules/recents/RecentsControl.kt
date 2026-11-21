@@ -193,14 +193,33 @@ class RecentsControl(private val app: ToolboxApplication) {
                 activeStream.set(stream)
                 stream.openInputStream().use { input ->
                     val buffer = ByteArray(1024)
-                    val result = ByteArrayOutputStream()
+                    val line = ByteArrayOutputStream()
+                    val result = StringBuilder()
+                    var receivedBytes = 0
+                    var prepared = false
                     while (true) {
                         val size = input.read(buffer)
                         if (size < 0) break
-                        check(result.size() + size <= 8_192)
-                        result.write(buffer, 0, size)
+                        receivedBytes += size
+                        check(receivedBytes <= 8_192)
+                        for (i in 0 until size) {
+                            if (buffer[i] != 10.toByte()) { line.write(buffer[i].toInt()); continue }
+                            val text = line.toString("UTF-8").trimEnd('\r')
+                            line.reset()
+                            if (text == RecentsProtocol.reply(nonce, "PREPARED")) {
+                                check(operation == "remove" && !prepared)
+                                prepared = true
+                                if (!allowed()) throw RequestBlocked()
+                                stream.openOutputStream().apply {
+                                    write("COMMIT:$nonce\n".toByteArray(Charsets.US_ASCII))
+                                    flush()
+                                }
+                            } else result.append(text).append('\n')
+                        }
                     }
-                    result.toString("UTF-8")
+                    if (line.size() > 0) result.append(line.toString("UTF-8"))
+                    if (RecentsProtocol.parse(result.toString(), nonce) == "REMOVED") check(prepared)
+                    result.toString()
                 }
             }
         }
