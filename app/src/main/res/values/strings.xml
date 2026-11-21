@@ -27,7 +27,7 @@
     <string name="recents_invalid_port">連接埠須為 1–65535</string>
     <string name="recents_remove_failed">卡片未確認移除，未重試</string>
     <string name="recents_required">請先到「背景移除卡片」啟用並完成連線</string>
-    <string name="recents_instructions">1. 在開發者選項開啟「無線偵錯」。\n2. 將系統設定與 Toolbox 放在分割畫面，開啟「使用配對碼配對裝置」，保持視窗開啟。\n3. 輸入配對視窗中 IP 位址冒號後的連接埠，以及 6 位配對碼，按「配對」。\n4. 關閉配對視窗，輸入無線偵錯主頁 IP 位址冒號後的連線連接埠，按「連線並驗證」。兩個連接埠通常不同。\n\n只連線這支手機；只移除指定 App 的唯一卡片，不清除全部、不清除資料。無需安裝 Shizuku。重開機或連接埠變更後需重新連線；若要撤銷配對，請在無線偵錯的已配對裝置中忘記 Toolbox。\n\n未連線時，時間限制仍回桌面但保留卡片；傳說對決會保留卡片並提示連線，不操作最近使用畫面。</string>
+    <string name="recents_instructions">1. 手機先連上 Wi-Fi，再於開發者選項開啟「無線偵錯」。\n2. 將系統設定與 Toolbox 放在分割畫面，開啟「使用配對碼配對裝置」，保持視窗開啟。\n3. 輸入配對視窗中 IP 位址冒號後的連接埠，以及 6 位配對碼，按「配對」。\n4. 關閉配對視窗，輸入無線偵錯主頁 IP 位址冒號後的連線連接埠，按「連線並驗證」。兩個連接埠通常不同。\n\n只連線這支手機；只移除指定 App 的唯一卡片，不清除全部、不清除資料。無需安裝 Shizuku。重開機或連接埠變更後需重新連線；若要撤銷配對，請在無線偵錯的已配對裝置中忘記 Toolbox。\n\n未連線時，時間限制仍回桌面但保留卡片；傳說對決會保留卡片並提示連線，不操作最近使用畫面。</string>
     <string name="aov_title">傳說對決</string>
     <string name="aov_daily">魔法水晶 · 每日 12:00</string>
     <string name="aov_settings">提醒設定</string>

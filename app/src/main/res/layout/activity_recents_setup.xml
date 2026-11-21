@@ -7,7 +7,7 @@
             android:text="@string/recents_title" android:textSize="20sp" android:textColor="@color/text_primary" />
         <TextView android:id="@+id/connectionStatus" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="16dp" android:textColor="@color/text_primary" android:textSize="16sp"
-            android:accessibilityLiveRegion="polite" />
+            android:accessibilityLiveRegion="polite" android:fontFeatureSettings="tnum" />
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:text="@string/recents_instructions"
             android:textColor="@color/text_secondary" android:textSize="14sp" android:fontFeatureSettings="tnum" />
