@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
     private fun configureModules() {
         moduleAdapter = ModuleAdapter(
             onToggle = ::persistSwitch,
-            onAction = { action -> openSettings(Intent(action.settingsAction)) },
+            onAction = { action -> openSettings(action.intent(this)) },
             onStartDrag = { dragHelper.startDrag(it) },
             onMoveByAction = { from, to ->
                 if (moduleAdapter.move(from, to)) persistOrder(moduleAdapter.order())

@@ -27,8 +27,8 @@ android {
         applicationId = "com.local.personaltoolbox"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.2.0"
+        versionCode = 8
+        versionName = "1.4.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

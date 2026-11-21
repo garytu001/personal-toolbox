@@ -1,12 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Toolbox</string>
+    <string name="aov_title">傳說對決</string>
+    <string name="aov_daily">魔法水晶 · 每日 12:00</string>
+    <string name="aov_settings">提醒設定</string>
+    <string name="aov_open_count">已購買：%1$,d 次</string>
+    <string name="aov_notification_channel">傳說對決每日提醒</string>
+    <string name="aov_notification_body">登入傳說對決，以 150 寶石購買 1 個魔法水晶。</string>
+    <string name="aov_schedule_exact">每日 12:00（台灣時間）</string>
+    <string name="aov_schedule_approximate">每日約 12:00（未授權準時提醒）</string>
+    <string name="aov_disabled">提醒未啟用，請先開啟主畫面的開關。</string>
+    <string name="aov_notifications_blocked">通知未啟用</string>
+    <string name="aov_enable_notifications">通知權限</string>
+    <string name="aov_enable_exact">準時提醒權限</string>
+    <string name="aov_confirm_open">確認並執行（150 寶石）</string>
+    <string name="aov_pending_setup">確認後開啟傳說對決，沿用遊戲登入狀態，購買 1 個魔法水晶，再移除遊戲卡片。執行時請暫停操作手機。畫面不符時停止；僅支援已核對的 2400 × 1080 畫面及遊戲版本 1.64.1.11。</string>
+    <string name="aov_already_opened">今日已發起或完成，不重複購買。</string>
+    <string name="aov_accessibility_required">需要 Android 11 以上及已重新啟用的 Toolbox 無障礙服務。</string>
+    <string name="aov_cleanup">移除遊戲卡片</string>
+    <string name="aov_stale_reminder">這則提醒已過期。</string>
+    <string name="aov_game_missing">未安裝台灣版傳說對決，或遊戲無法開啟。</string>
     <string name="service_running">運作中</string>
     <string name="service_disabled">未啟用</string>
     <string name="accessibility_settings">無障礙</string>
     <string name="battery_settings">電池</string>
     <string name="youtube_ads_title">YouTube 廣告略過</string>
     <string name="short_video_title">短影音攔截</string>
+    <string name="app_usage_limit_title">使用時間限制</string>
+    <string name="youtube_usage_limit">YouTube · 20 分鐘</string>
+    <string name="instagram_usage_limit">Instagram · 5 分鐘</string>
+    <string name="threads_usage_limit">Threads · 5 分鐘</string>
+    <string name="facebook_usage_limit">Facebook · 5 分鐘</string>
+    <string name="dcard_usage_limit">Dcard · 5 分鐘</string>
+    <string name="usage_limit_exit_count">已退出：%1$,d 次</string>
     <string name="youtube_platform">YouTube</string>
     <string name="instagram_platform">Instagram</string>
     <string name="facebook_platform">Facebook</string>
@@ -39,5 +65,5 @@
     <string name="settings_unavailable">設定無法開啟</string>
     <string name="preferences_error">儲存失敗</string>
     <string name="accessibility_service_name">Toolbox</string>
-    <string name="accessibility_service_description">Shorts／Reels 攔截、廣告略過</string>
+    <string name="accessibility_service_description">Shorts／Reels 攔截、YouTube 廣告略過、應用連續使用到時返回桌面、確認後購買魔法水晶與移除遊戲卡片</string>
 </resources>

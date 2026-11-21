@@ -29,7 +29,7 @@ data class ToolboxSettings(val modules: Map<String, ModuleState>, val moduleOrde
 }
 
 class ToolboxPreferences internal constructor(
-    private val store: DataStore<Preferences>,
+    internal val store: DataStore<Preferences>,
     scope: CoroutineScope,
     definitions: List<ModuleDefinition>,
 ) {

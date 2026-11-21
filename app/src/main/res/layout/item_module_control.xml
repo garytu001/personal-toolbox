@@ -7,7 +7,7 @@
         <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
             android:layout_weight="1" android:orientation="vertical" android:paddingStart="0dp" android:paddingEnd="8dp">
             <TextView android:id="@+id/controlName" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:textColor="@color/text_primary" android:textSize="14sp" />
+                android:textColor="@color/text_primary" android:textSize="14sp" android:fontFeatureSettings="tnum" />
             <TextView android:id="@+id/controlCount" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:layout_marginTop="3dp" android:textColor="@color/text_secondary" android:textSize="12sp"
                 android:fontFeatureSettings="tnum" />

@@ -5,6 +5,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.local.personaltoolbox.modules.ModuleDefinition
+import com.local.personaltoolbox.modules.ModuleRegistry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,36 @@ import org.junit.rules.TemporaryFolder
 class ToolboxPreferencesTest {
     @get:Rule val temporary = TemporaryFolder()
     private val definitions = listOf(ModuleDefinition("yt_shorts", 1), ModuleDefinition("ig_reels", 2))
+
+    @Test fun addingUsageLimitsPreservesOldDataAndKeepsEachNewSwitchAndCountIndependent() = runBlocking {
+        val file = temporary.newFile("usage-limits.preferences_pb")
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        try {
+            val store = PreferenceDataStoreFactory.create(scope = scope) { file }
+            val limitIds = listOf("yt_usage_limit", "ig_usage_limit", "threads_usage_limit", "fb_usage_limit", "dcard_usage_limit")
+            val oldDefinitions = ModuleRegistry.modules.filter { it.id !in limitIds }
+            val old = ToolboxPreferences(store, scope, oldDefinitions)
+            old.setEnabled("yt_shorts", false)
+            old.incrementBlockedCount("yt_shorts")
+            val oldOrder = oldDefinitions.map { it.id }.reversed()
+            old.setModuleOrder(oldOrder)
+            val updated = ToolboxPreferences(store, scope, ModuleRegistry.modules)
+            val loaded = withTimeout(5_000) { updated.settings.filterNotNull().first() }
+            assertEquals(oldOrder + limitIds, loaded.moduleOrder)
+            assertFalse(loaded.isEnabled("yt_shorts"))
+            assertEquals(1, loaded.blockedCount("yt_shorts"))
+            limitIds.forEach { assertTrue(loaded.isEnabled(it)); assertEquals(0, loaded.blockedCount(it)) }
+            updated.setEnabled("threads_usage_limit", false)
+            updated.incrementBlockedCount("ig_usage_limit")
+            val changed = withTimeout(5_000) {
+                updated.settings.filterNotNull().first { !it.isEnabled("threads_usage_limit") && it.blockedCount("ig_usage_limit") == 1 }
+            }
+            assertFalse(changed.isEnabled("yt_shorts"))
+            assertEquals(1, changed.blockedCount("yt_shorts"))
+            (limitIds - "threads_usage_limit").forEach { assertTrue(changed.isEnabled(it)) }
+            (limitIds - "ig_usage_limit").forEach { assertEquals(0, changed.blockedCount(it)) }
+        } finally { scope.cancel() }
+    }
 
     @Test fun persistsOrderSwitchAndCountAcrossStoreRecreation() = runBlocking {
         val file = temporary.newFile("restart.preferences_pb")
