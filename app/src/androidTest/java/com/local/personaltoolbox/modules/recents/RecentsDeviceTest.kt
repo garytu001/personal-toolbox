@@ -34,6 +34,24 @@ class RecentsDeviceTest {
     @Test fun bundledNativePairingLibrariesLoadOnThisAndroidVersion() {
         System.loadLibrary("spake2")
         assertNotNull(javax.net.ssl.SSLContext.getInstance("TLSv1.3", Conscrypt.newProvider()))
+        val role = Class.forName("io.github.muntashirakon.crypto.spake2.Spake2Role")
+        val context = Class.forName("io.github.muntashirakon.crypto.spake2.Spake2Context")
+        val constructor = context.getConstructor(role, ByteArray::class.java, ByteArray::class.java)
+        val clientName = "adb pair client\u0000".toByteArray()
+        val serverName = "adb pair server\u0000".toByteArray()
+        val alice = constructor.newInstance(role.getField("Alice").get(null), clientName, serverName)
+        val bob = constructor.newInstance(role.getField("Bob").get(null), serverName, clientName)
+        try {
+            val password = "123456".toByteArray() + ByteArray(64) { it.toByte() }
+            val generate = context.getMethod("generateMessage", ByteArray::class.java)
+            val process = context.getMethod("processMessage", ByteArray::class.java)
+            val a = generate.invoke(alice, password) as ByteArray
+            val b = generate.invoke(bob, password) as ByteArray
+            assertArrayEquals(process.invoke(alice, b) as ByteArray, process.invoke(bob, a) as ByteArray)
+        } finally {
+            context.getMethod("destroy").invoke(alice)
+            context.getMethod("destroy").invoke(bob)
+        }
     }
 
     @Test fun cancellingPairingClosesAStalledTlsSocket() {
