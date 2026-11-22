@@ -9,3 +9,5 @@ keystore.properties
 *.iml
 work/
 outputs/
+
+.codex-attachments/

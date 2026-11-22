@@ -25,25 +25,25 @@ class ToolboxPreferencesTest {
     @get:Rule val temporary = TemporaryFolder()
     private val definitions = listOf(ModuleDefinition("yt_shorts", 1), ModuleDefinition("ig_reels", 2))
 
-    @Test fun backgroundRecentsUpgradeStartsDisabledAndPreservesLimitsAndOrder() = runBlocking {
-        val file = temporary.newFile("recents-upgrade.preferences_pb")
-        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        try {
-            val store = PreferenceDataStoreFactory.create(scope = scope) { file }
-            val prior = ModuleRegistry.modules.filterNot { it.id == "recents_control" }
-            val old = ToolboxPreferences(store, scope, prior)
-            old.setEnabled("yt_usage_limit", false)
-            old.incrementBlockedCount("ig_usage_limit")
-            val order = prior.map { it.id }.reversed()
-            old.setModuleOrder(order)
-            val updated = ToolboxPreferences(store, scope, ModuleRegistry.modules)
-            val state = withTimeout(5_000) { updated.settings.filterNotNull().first() }
-            assertFalse(state.isEnabled("recents_control"))
-            assertEquals(0, state.blockedCount("recents_control"))
-            assertFalse(state.isEnabled("yt_usage_limit"))
-            assertEquals(1, state.blockedCount("ig_usage_limit"))
-            assertEquals(order + "recents_control", state.moduleOrder)
-        } finally { scope.cancel() }
+    @Test fun retiringCardSettingsPreservesLimitsCountsAndOrder() = runBlocking {
+        val prior = androidx.datastore.preferences.core.mutablePreferencesOf(
+            booleanPreferencesKey("recents_control_enabled") to true,
+            intPreferencesKey("recents_control_port") to 43210,
+            intPreferencesKey("recents_control_blocked_count") to 7,
+            booleanPreferencesKey("yt_usage_limit_enabled") to false,
+            intPreferencesKey("ig_usage_limit_blocked_count") to 12,
+            ToolboxPreferences.MODULE_ORDER to "ig_usage_limit,recents_control,yt_shorts,yt_usage_limit",
+        )
+        val migration = RetiredRecentsMigration()
+        assertTrue(migration.shouldMigrate(prior))
+        val migrated = migration.migrate(prior)
+        assertFalse(migrated.asMap().keys.any { it.name.startsWith("recents_control_") })
+        assertEquals(false, migrated[booleanPreferencesKey("yt_usage_limit_enabled")])
+        assertEquals(12, migrated[intPreferencesKey("ig_usage_limit_blocked_count")])
+        assertEquals("ig_usage_limit,yt_shorts,yt_usage_limit", migrated[ToolboxPreferences.MODULE_ORDER])
+        assertFalse(migration.shouldMigrate(migrated))
+        assertEquals(migrated, migration.migrate(migrated))
+        assertFalse(ModuleRegistry.ids.contains("recents_control"))
     }
 
     @Test fun addingUsageLimitsPreservesOldDataAndKeepsEachNewSwitchAndCountIndependent() = runBlocking {

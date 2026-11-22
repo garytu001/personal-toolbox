@@ -30,9 +30,6 @@
             android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="16dp"
             android:background="@drawable/bg_button" android:text="@string/aov_confirm_open"
             android:textColor="@color/text_primary" android:textAllCaps="false" android:fontFeatureSettings="tnum" />
-        <androidx.appcompat.widget.AppCompatButton android:id="@+id/backgroundRemoval"
-            android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp"
-            android:background="@drawable/bg_button" android:text="@string/recents_settings"
-            android:textColor="@color/text_primary" android:textAllCaps="false" />
+
     </LinearLayout>
 </ScrollView>

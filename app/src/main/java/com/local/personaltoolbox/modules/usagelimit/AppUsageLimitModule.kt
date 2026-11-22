@@ -10,10 +10,10 @@ import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import com.local.personaltoolbox.accessibility.ModuleEnvironment
 import com.local.personaltoolbox.accessibility.ToolboxModule
-import com.local.personaltoolbox.ToolboxApplication
-import com.local.personaltoolbox.modules.recents.RemovalResult
+import com.local.personaltoolbox.modules.recents.RecentApps
 
 class AppUsageLimitModule(id: String, packageName: String, private val minutes: Int) : ToolboxModule(id, packageName) {
+    override val packageNames = setOf(packageName, RecentApps.LAUNCHER)
     internal override val observesForegroundChanges = true
     private var timer: ContinuousUseTimer? = null
     private var environment: ModuleEnvironment? = null
@@ -24,15 +24,10 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
         timer = ContinuousUseTimer(environment.scope, minutes * 60_000L, SystemClock::elapsedRealtime,
             isAllowed = { isTargetForeground(environment) },
             exit = { mayDispatch ->
-                // Both the service and the privileged helper independently verify the foreground.
                 try {
-                    val control = (environment.service.application as ToolboxApplication).recentsControl
                     if (!mayDispatch() || !isTargetForeground(environment)) false
-                    else if (control.isReady()) {
-                        control.remove(packageName, foregroundOnly = true) { mayDispatch() && isTargetForeground(environment) } == RemovalResult.REMOVED
-                    } else {
-                        // Preserve the existing time limit when the optional connection is unavailable.
-                        environment.service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
+                    else environment.recentCards.close(packageName, foregroundOnly = true, mayOpen = mayDispatch) {
+                        environment.settings()?.isEnabled(id) == true
                     }
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e

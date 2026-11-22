@@ -17,7 +17,7 @@ import androidx.annotation.RequiresApi
 import com.local.personaltoolbox.ToolboxApplication
 import com.local.personaltoolbox.accessibility.ModuleEnvironment
 import com.local.personaltoolbox.accessibility.ToolboxModule
-import com.local.personaltoolbox.modules.recents.RemovalResult
+import com.local.personaltoolbox.modules.recents.RecentApps
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -30,6 +30,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKAGE) {
+    override val packageNames = setOf(packageName, RecentApps.LAUNCHER)
     private var job: Job? = null
     private var ownGesture = false
     private var environment: ModuleEnvironment? = null
@@ -38,22 +39,32 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
 
     internal override fun connect(environment: ModuleEnvironment) {
         this.environment = environment
+        AovRunRequests.cleanupReady = true
         AovRunRequests.ready = Build.VERSION.SDK_INT >= 30 &&
             (environment.service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT) != 0 &&
             (environment.service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES) != 0
+        environment.scope.launch {
+            AovRunRequests.requests.collect { request ->
+                if (request?.cleanupOnly == true) start(environment, request)
+            }
+        }
         environment.scope.coroutineContext[Job]?.invokeOnCompletion {
-            if (this.environment === environment) AovRunRequests.ready = false
+            if (this.environment === environment) { AovRunRequests.ready = false; AovRunRequests.cleanupReady = false }
         }
     }
 
     internal override fun observeWindow(root: AccessibilityNodeInfo) {
         val env = environment ?: return
         val request = AovRunRequests.requests.value ?: return
-        if (root.packageName?.toString() == packageName && handledRequest != request.key && job?.isActive != true) {
-            handledRequest = request.key
-            AovRunRequests.markStarted(request)
-            job = env.scope.launch { execute(env, request) }
-        }
+        if (root.packageName?.toString() == packageName) start(env, request)
+    }
+
+    private fun start(env: ModuleEnvironment, request: AovRunRequest) {
+        if (handledRequest == request.key || job?.isActive == true) return
+        handledRequest = request.key
+        AovRunRequests.markStarted(request)
+        removingCard = request.cleanupOnly
+        job = env.scope.launch { execute(env, request) }
     }
 
     private suspend fun execute(env: ModuleEnvironment, request: AovRunRequest) {
@@ -62,7 +73,6 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
         var committed = false
         var done = false
         try {
-            if (Build.VERSION.SDK_INT < 30) error("screenshot_unavailable")
             if (request.cleanupOnly) {
                 check(store.hasConfirmedSuccessToday())
                 done = true
@@ -70,6 +80,7 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
                 AovRunRequests.finish(request, "今日已購買，已移除遊戲卡片")
                 return
             }
+            if (Build.VERSION.SDK_INT < 30) error("screenshot_unavailable")
             check(env.service.packageManager.getPackageInfo(packageName, 0).versionName == VERIFIED_GAME_VERSION) { "game_version_changed" }
             val vision = AovVision(env.service.assets.open("aov/asus_2400x1080_v164111.mask").bufferedReader().use { it.readLines() })
             withTimeout(120_000) {
@@ -117,7 +128,6 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
             val message = when {
                 committed && !done -> "購買結果待確認，今天不再自動購買"
                 done -> "今日已購買；最近使用卡片未確認移除"
-                e.message == "recents_not_ready" -> "請先完成背景移除卡片連線"
                 e.message == "game_version_changed" -> "遊戲版本已變更，需重新核對畫面"
                 else -> "畫面未辨識或流程中止，未送出購買"
             }
@@ -125,6 +135,7 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
         } finally {
             if (!committed && !done) withContext(NonCancellable) { store.releaseOpen(request.date) }
             ownGesture = false
+            removingCard = false
         }
     }
 
@@ -174,22 +185,19 @@ class AovAutomationModule : ToolboxModule(AovReminder.ID, AovReminder.GAME_PACKA
     }
 
     private suspend fun removeGameFromRecents(env: ModuleEnvironment, request: AovRunRequest) {
-        checkAllowed(env, request, packageName)
-        val control = (env.service.application as ToolboxApplication).recentsControl
-        check(control.isReady()) { "recents_not_ready" }
+        if (!request.cleanupOnly) checkAllowed(env, request, packageName)
         removingCard = true
         try {
-            val result = control.remove(packageName, foregroundOnly = false) {
+            check(env.recentCards.close(packageName, foregroundOnly = !request.cleanupOnly) {
                 env.settings()?.isEnabled(id) == true && AovRunRequests.requests.value == request &&
                     AovReminderTime.isCurrentDay(request.date)
-            }
-            check(result == RemovalResult.REMOVED || result == RemovalResult.ABSENT) { "card_not_removed" }
+            }) { "card_not_removed" }
         } finally { removingCard = false }
     }
 
     internal override fun cancelPending() { job?.cancel() }
     internal override fun onForegroundLost() { if (!removingCard) cancelPending() }
-    internal override fun onUserInteraction(eventType: Int) { if (!ownGesture) cancelPending() }
+    internal override fun onUserInteraction(eventType: Int) { if (!ownGesture && !removingCard) cancelPending() }
     override fun matches(root: AccessibilityNodeInfo) = false
     override fun act(service: AccessibilityService, root: AccessibilityNodeInfo) = false
 

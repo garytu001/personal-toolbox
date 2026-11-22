@@ -20,7 +20,9 @@ import kotlinx.coroutines.delay
 import java.io.IOException
 
 private val Context.toolboxDataStore by preferencesDataStore(
-    name = "toolbox_preferences", produceMigrations = { listOf(ToolboxMigration) })
+    name = "toolbox_preferences", produceMigrations = { context ->
+        listOf(ToolboxMigration, RetiredRecentsMigration(context.applicationContext))
+    })
 
 data class ModuleState(val enabled: Boolean = true, val blockedCount: Int = 0)
 data class ToolboxSettings(val modules: Map<String, ModuleState>, val moduleOrder: List<String>) {

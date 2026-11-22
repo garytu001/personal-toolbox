@@ -11,9 +11,10 @@ internal object AovRunRequests {
     val requests = mutable.asStateFlow()
     val status = MutableStateFlow("")
     var ready = false
+    var cleanupReady = false
     private var started: String? = null
     fun begin(date: String, cleanupOnly: Boolean = false): Boolean {
-        if (!ready || mutable.value != null) return false
+        if (!(if (cleanupOnly) cleanupReady else ready) || mutable.value != null) return false
         status.value = "執行中"
         started = null
         mutable.value = AovRunRequest(date, cleanupOnly)

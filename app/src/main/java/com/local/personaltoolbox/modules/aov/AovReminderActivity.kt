@@ -22,7 +22,6 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.local.personaltoolbox.R
 import com.local.personaltoolbox.ToolboxApplication
 import com.local.personaltoolbox.databinding.ActivityAovReminderBinding
-import com.local.personaltoolbox.modules.recents.RecentsSetupActivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
@@ -59,7 +58,6 @@ class AovReminderActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= 31) openSettings(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:$packageName")))
         }
         binding.confirmOpen.setOnClickListener { confirmOpen() }
-        binding.backgroundRemoval.setOnClickListener { startActivity(Intent(this, RecentsSetupActivity::class.java)) }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
                 app.preferences.settings.filterNotNull().collect { refresh(); runNotificationConfirmation() }
@@ -67,7 +65,10 @@ class AovReminderActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                AovRunRequests.status.collect { status -> if (status.isNotEmpty()) binding.resultStatus.text = status }
+                AovRunRequests.status.collect { status ->
+                    if (status.isNotEmpty()) binding.resultStatus.text = status
+                    refresh()
+                }
             }
         }
     }
@@ -105,7 +106,8 @@ class AovReminderActivity : AppCompatActivity() {
         })
         binding.exactPermission.visibility = if (Build.VERSION.SDK_INT >= 31 && !AovReminder.hasExactPermission(this)) View.VISIBLE else View.GONE
         val stale = intent.hasExtra(AovReminder.DATE_EXTRA) && !AovReminderTime.isCurrentDay(intent.getStringExtra(AovReminder.DATE_EXTRA))
-        binding.confirmOpen.isEnabled = enabled && !busy && (!openedToday || completedToday) && !stale
+        binding.confirmOpen.isEnabled = enabled && !busy && AovRunRequests.requests.value == null &&
+            (!openedToday || completedToday) && !stale
         binding.confirmOpen.setText(if (completedToday) R.string.aov_cleanup else R.string.aov_confirm_open)
         if (stale) binding.resultStatus.setText(R.string.aov_stale_reminder)
         else if (AovRunRequests.status.value.isNotEmpty()) binding.resultStatus.text = AovRunRequests.status.value
@@ -116,14 +118,13 @@ class AovReminderActivity : AppCompatActivity() {
         if (busy) return
         val date = intent.getStringExtra(AovReminder.DATE_EXTRA) ?: AovReminderTime.today().toString()
         if (!AovReminderTime.isCurrentDay(date)) { refresh(); return }
-        if (!app.recentsControl.isReady()) { binding.resultStatus.setText(R.string.recents_required); return }
         if (completedToday) {
             busy = true
             refresh()
             app.applicationScope.launch {
                 try { removeConfirmedCard(date) }
                 catch (e: CancellationException) { throw e }
-                catch (_: Exception) { AovRunRequests.status.value = getString(R.string.recents_remove_failed) }
+                catch (_: Exception) { AovRunRequests.status.value = getString(R.string.card_remove_failed) }
                 finally { busy = false; if (!isDestroyed) refresh() }
             }
             return
@@ -165,11 +166,9 @@ class AovReminderActivity : AppCompatActivity() {
 
     private suspend fun removeConfirmedCard(date: String) {
         check(store.hasConfirmedSuccessToday() && AovReminderTime.isCurrentDay(date))
-        val result = app.recentsControl.remove(AovReminder.GAME_PACKAGE, foregroundOnly = false) {
-            app.preferences.settings.value?.isEnabled(AovReminder.ID) == true && AovReminderTime.isCurrentDay(date)
+        if (!AovRunRequests.begin(date, cleanupOnly = true)) {
+            AovRunRequests.status.value = getString(R.string.card_accessibility_required)
         }
-        AovRunRequests.status.value = if (result.confirmed) "今日已購買，遊戲卡片已移除或不存在"
-            else getString(R.string.recents_remove_failed)
     }
 
     private suspend fun cancelLaunch(date: String) {

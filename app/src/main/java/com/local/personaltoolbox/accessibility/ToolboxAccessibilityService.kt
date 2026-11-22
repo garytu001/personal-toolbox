@@ -14,6 +14,7 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import com.local.personaltoolbox.ToolboxApplication
 import com.local.personaltoolbox.modules.ModuleRegistry
+import com.local.personaltoolbox.modules.recents.RecentCardCloser
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -29,12 +30,13 @@ class ToolboxAccessibilityService : AccessibilityService() {
         .groupBy({ it.first }, { it.second })
     private val foregroundObservers = allModules.filter { it.observesForegroundChanges }
     private val app get() = application as ToolboxApplication
+    private var recentCards: RecentCardCloser? = null
     private var moduleScope: CoroutineScope? = null
     private var allPackageEvents: Boolean? = null
     private var screenReceiverRegistered = false
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == Intent.ACTION_SCREEN_OFF) notifyForeground(null) else refreshForeground()
+            if (intent.action == Intent.ACTION_SCREEN_OFF) { recentCards?.cancel(); notifyForeground(null) } else refreshForeground()
         }
     }
 
@@ -45,7 +47,9 @@ class ToolboxAccessibilityService : AccessibilityService() {
         allPackageEvents = null
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         moduleScope = scope
-        val environment = ModuleEnvironment(this, scope, { app.preferences.settings.value }, ::recordBlock)
+        val closer = RecentCardCloser(this)
+        recentCards = closer
+        val environment = ModuleEnvironment(this, scope, { app.preferences.settings.value }, ::recordBlock, closer)
         allModules.forEach { it.connect(environment) }
         if (!screenReceiverRegistered) {
             ContextCompat.registerReceiver(this, screenReceiver, IntentFilter().apply {
@@ -76,6 +80,7 @@ class ToolboxAccessibilityService : AccessibilityService() {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED &&
             event.eventType != AccessibilityEvent.TYPE_VIEW_CLICKED &&
+            event.eventType != AccessibilityEvent.TYPE_VIEW_LONG_CLICKED &&
             event.eventType != AccessibilityEvent.TYPE_VIEW_SCROLLED) return
         val settings = app.preferences.settings.value ?: return
         val root = rootInActiveWindow ?: run { notifyForeground(null); foregroundLost(); return }
@@ -85,8 +90,9 @@ class ToolboxAccessibilityService : AccessibilityService() {
             notifyForeground(foregroundPackage)
             // A delayed event must never trigger an action in a different foreground application.
             if (foregroundPackage != sourcePackage) { foregroundLost(); return }
+            recentCards?.onEvent(event)
             val candidates = modules[sourcePackage] ?: run { foregroundLost(); return }
-            if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+            if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_LONG_CLICKED || event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
                 candidates.forEach { it.onUserInteraction(event.eventType) }
                 return
             }
@@ -140,9 +146,11 @@ class ToolboxAccessibilityService : AccessibilityService() {
         cancelPending()
         moduleScope?.cancel()
         moduleScope = null
+        recentCards?.cancel()
+        recentCards = null
         if (screenReceiverRegistered) { unregisterReceiver(screenReceiver); screenReceiverRegistered = false }
     }
-    override fun onInterrupt() { notifyForeground(null); cancelPending() }
+    override fun onInterrupt() { recentCards?.cancel(); notifyForeground(null); cancelPending() }
     override fun onUnbind(intent: Intent?): Boolean { stop(); return super.onUnbind(intent) }
     override fun onDestroy() { stop(); super.onDestroy() }
     companion object { private const val TAG = "ToolboxAccessibility" }

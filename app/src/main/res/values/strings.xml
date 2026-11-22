@@ -1,33 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="card_remove_failed">卡片未確認移除，未重試</string>
+    <string name="card_accessibility_required">請先啟用 Toolbox 無障礙服務。</string>
     <string name="app_name">Toolbox</string>
-    <string name="recents_title">背景移除卡片</string>
-    <string name="recents_local_connection">本機連線</string>
-    <string name="recents_count">已移除：%1$,d 張</string>
-    <string name="recents_settings">連線設定</string>
-    <string name="recents_enable">啟用背景移除</string>
-    <string name="recents_debug_settings">開啟開發者選項</string>
-    <string name="recents_pair_port">配對連接埠</string>
-    <string name="recents_pair_code">6 位配對碼</string>
-    <string name="recents_connect_port">連線連接埠</string>
-    <string name="recents_pair">配對</string>
-    <string name="recents_connect">連線並驗證</string>
-    <string name="recents_disconnect">中斷連線</string>
-    <string name="recents_licenses">開源授權</string>
-    <string name="recents_disconnected">未連線</string>
-    <string name="recents_enable_first">請先啟用背景移除</string>
-    <string name="recents_unsupported">需要 Android 11 以上</string>
-    <string name="recents_pairing">配對中</string>
-    <string name="recents_paired">已配對，請輸入無線偵錯主頁的連線連接埠</string>
-    <string name="recents_pair_failed">配對失敗：請保持配對視窗開啟，確認配對連接埠與新配對碼</string>
-    <string name="recents_connecting">連線與驗證中</string>
-    <string name="recents_connected">已連線，可背景移除卡片</string>
-    <string name="recents_connect_failed">連線或系統能力驗證失敗：請確認已配對，並輸入主頁的連線連接埠</string>
-    <string name="recents_invalid_pairing">請輸入有效的配對連接埠與 6 位配對碼</string>
-    <string name="recents_invalid_port">連接埠須為 1–65535</string>
-    <string name="recents_remove_failed">卡片未確認移除，未重試</string>
-    <string name="recents_required">請先到「背景移除卡片」啟用並完成連線</string>
-    <string name="recents_instructions">1. 手機先連上 Wi-Fi，再於開發者選項開啟「無線偵錯」。\n2. 將系統設定與 Toolbox 放在分割畫面，開啟「使用配對碼配對裝置」，保持視窗開啟。\n3. 輸入配對視窗中 IP 位址冒號後的連接埠，以及 6 位配對碼，按「配對」。\n4. 關閉配對視窗，輸入無線偵錯主頁 IP 位址冒號後的連線連接埠，按「連線並驗證」。兩個連接埠通常不同。\n\n只連線這支手機；只移除指定 App 的唯一卡片，不清除全部、不清除資料。無需安裝 Shizuku。重開機或連接埠變更後需重新連線；若要撤銷配對，請在無線偵錯的已配對裝置中忘記 Toolbox。\n\n未連線時，時間限制仍回桌面但保留卡片；傳說對決會保留卡片並提示連線，不操作最近使用畫面。</string>
     <string name="aov_title">傳說對決</string>
     <string name="aov_daily">魔法水晶 · 每日 12:00</string>
     <string name="aov_settings">提醒設定</string>
@@ -41,7 +16,7 @@
     <string name="aov_enable_notifications">通知權限</string>
     <string name="aov_enable_exact">準時提醒權限</string>
     <string name="aov_confirm_open">確認並執行（150 寶石）</string>
-    <string name="aov_pending_setup">先完成背景移除卡片的本機連線。確認後開啟傳說對決，沿用遊戲登入狀態，購買 1 個魔法水晶，再直接移除遊戲卡片，不開啟最近使用畫面。遊戲操作時請暫停操作手機。畫面不符時停止；僅支援已核對的 2400 × 1080 畫面及遊戲版本 1.64.1.11。今日已確認買過時，可直接移除卡片，不重新開啟遊戲。</string>
+    <string name="aov_pending_setup">確認後開啟傳說對決，購買 1 個魔法水晶，再開啟最近使用畫面，長按遊戲圖示並點 Close 移除卡片。操作時請暫停操作手機。僅支援已核對的 2400 × 1080 畫面及遊戲版本 1.64.1.11；畫面不符時停止。今日已確認買過時，清理只移除既有卡片，不重新開啟遊戲。</string>
     <string name="aov_already_opened">今日已發起或完成，不重複購買。</string>
     <string name="aov_accessibility_required">需要 Android 11 以上及已重新啟用的 Toolbox 無障礙服務。</string>
     <string name="aov_cleanup">移除遊戲卡片</string>
