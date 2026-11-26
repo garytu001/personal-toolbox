@@ -14,7 +14,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.local.personaltoolbox.R
 import com.local.personaltoolbox.ToolboxApplication
-import com.local.personaltoolbox.modules.recents.RecentApps
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.collectLatest
@@ -28,7 +27,7 @@ import java.time.Instant
 
 object AovReminder {
     const val ID = "aov_crystal"
-    const val GAME_PACKAGE = RecentApps.AOV
+    const val GAME_PACKAGE = "com.garena.game.kgtw"
     const val DATE_EXTRA = "reminder_date"
     const val CONFIRM_EXTRA = "confirm_from_notification"
     private const val ALARM_ACTION = "com.local.personaltoolbox.AOV_NOON"

@@ -12,6 +12,7 @@ abstract class ToolboxModule(val id: String, val packageName: String) {
     private var lastActionTime: Long? = null
     internal open fun connect(environment: ModuleEnvironment) = Unit
     internal open fun onForegroundChanged(packageName: String?) = Unit
+    internal open fun onForegroundReady(): Boolean = false
     internal open fun onForegroundLost() { cancelPending() }
     internal open fun onEnabledChanged(enabled: Boolean) { if (!enabled) cancelPending() }
     internal open fun observeWindow(root: AccessibilityNodeInfo) = Unit

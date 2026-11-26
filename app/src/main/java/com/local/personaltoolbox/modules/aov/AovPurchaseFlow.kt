@@ -8,7 +8,6 @@ internal class AovPurchaseFlow(private val host: Host) {
         suspend fun commitPurchase(): Boolean
         suspend fun purchased()
         suspend fun alreadyPurchased()
-        suspend fun cleanup()
     }
 
     suspend fun run() {
@@ -51,7 +50,6 @@ internal class AovPurchaseFlow(private val host: Host) {
                         check(!sentPurchase) { "purchase_not_verified" }
                         host.alreadyPurchased()
                     }
-                    host.cleanup()
                     return
                 }
                 AovScreen.UNKNOWN -> error("unrecognized_screen")

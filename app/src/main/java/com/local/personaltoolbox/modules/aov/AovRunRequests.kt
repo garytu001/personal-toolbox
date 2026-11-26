@@ -4,20 +4,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-internal data class AovRunRequest(val date: String, val cleanupOnly: Boolean = false, val key: String = UUID.randomUUID().toString())
+internal data class AovRunRequest(val date: String, val key: String = UUID.randomUUID().toString())
 
 internal object AovRunRequests {
     private val mutable = MutableStateFlow<AovRunRequest?>(null)
     val requests = mutable.asStateFlow()
     val status = MutableStateFlow("")
     var ready = false
-    var cleanupReady = false
     private var started: String? = null
-    fun begin(date: String, cleanupOnly: Boolean = false): Boolean {
-        if (!(if (cleanupOnly) cleanupReady else ready) || mutable.value != null) return false
+    fun begin(date: String): Boolean {
+        if (!ready || mutable.value != null) return false
         status.value = "執行中"
         started = null
-        mutable.value = AovRunRequest(date, cleanupOnly)
+        mutable.value = AovRunRequest(date)
         return true
     }
     fun markStarted(request: AovRunRequest) { if (mutable.value == request) started = request.key }

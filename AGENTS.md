@@ -15,9 +15,9 @@
 8. 廣告辨識只使用可見播放器廣告元件，不以首頁「Sponsored」文字觸發，排除 Shorts。先保存媒體識別；確認切至不同影片後才送上一部，切回原片且廣告消失後才計數。不支援 next/previous 或缺少媒體資訊時不操作；單階段逾時 3 秒，同一廣告最多發起一次切換且相鄰嘗試至少隔 10 秒。不要宣稱保證恢復原進度。
 9. 非同步模組使用 ModuleEnvironment 的服務 scope／設定／成功回報與 ToolboxModule hooks。關閉模組、手動點擊、停止服務時取消；服務 scope 必須取消，不跨延遲保留 AccessibilityNodeInfo。切換自身可能觸發捲動事件，不可因此取消自己的回程；等待中的一般捲動會取消。
 10. 短影音卡片包含 yt_shorts、ig_reels、fb_reels，各自開關與計數；FB 新增預設 false。Facebook 只偵測明確選中的 Reels 分頁或同時具備 Reels 標題、全畫面捲動播放器與右側垂直互動按鈕，排除 Stories；不要因「影片」文字或 ImmersiveActivity 本身就攔截，也不要猜數字 ID。新版本仍需實機核對。
-11. 功能三 `aov_crystal` 預設 false，每日台灣時間 12:00 通知、使用者確認後才啟動。只購買 1 個 150 寶石魔法水晶，不抽獎。僅沿用登入，不存帳密。遊戲版本與畫面尺寸須符合實機核對的辨識檔，畫面不符即停止；不得加入背景輪詢。每個手勢前核對前景套件，每步後只截圖一次驗證下一狀態；截圖不保存／上傳。購買前原子保存當日提交紀錄，結果不明也不得重購；只有辨識到成功才計數。依使用者最新指示共用 RecentCardCloser，開啟 ASUS 最近使用畫面，長按遊戲圖示後點 Close。今日已確認成功時，清理按鈕不啟動遊戲、不購買，仍需要無障礙服務；清理不得清除全部或強制停止套件。Module 的多套件監聽由 packageNames 宣告，不在容器依 ID 分支。
-12. 使用時間限制卡片含 `yt_usage_limit` 20 分鐘與 `ig_usage_limit`／`threads_usage_limit`／`fb_usage_limit`／`dcard_usage_limit` 各 5 分鐘，皆預設 true。計算每次連續前景使用，離開／鎖屏／關閉／服務停止即重算，點擊與捲動不重算。以服務 scope 單次截止計時，不輪詢；動作前再次核對前景、螢幕及開關，只透過共用 RecentCardCloser 開啟最近使用畫面、長按目標唯一卡片圖示後點 Close。不能宣稱強制閃退或停止背景播放。自身移除造成的前景變化不得取消成功回報，但關閉／停止仍取消；等待回報時的新一次進入要有獨立截止時間。透過通用 foreground hooks 接收離開事件，只有有啟用的觀察模組時動態接收所有套件事件；不讀其他 App 內容，動作仍依註冊表派送。
-13. 共用畫面移除只允許六個固定 App。依已驗證 ASUS 卡片節點及唯一精確 App 標籤選取完整可見且可長按的圖示，以 ACTION_LONG_CLICK 長按；核對選單本身同時含目標 App 名稱、App info 與精確 Close 才點擊。禁止 Clear all／Close all、任意卡片或猜測座標。只在真實視窗事件後銜接，不加固定延遲、不輪詢、不重送；6 秒超時即停止。部分露出的唯一卡片至多嘗試一次 ACTION_SHOW_ON_SCREEN，找不到即停止，不為清理重新啟動遊戲。動作前重驗前景／螢幕／開關，不跨延遲保存節點；手動干預取消，自身長按／Close 不誤取消。已刪除舊配對、連線、命令及依賴；退役模組 ID 只供相容遷移移除其設定及憑證，不得重用。新版仍需實機核對。
+11. 功能三 `aov_crystal` 預設 false，每日台灣時間 12:00 通知、使用者確認後才啟動。只購買 1 個 150 寶石魔法水晶，不抽獎。僅沿用登入，不存帳密。遊戲版本與畫面尺寸須符合實機核對的辨識檔，畫面不符即停止；不得加入背景輪詢。每個手勢前核對前景套件，每步後只截圖一次驗證下一狀態；截圖不保存／上傳。購買前原子保存當日提交紀錄，結果不明也不得重購；只有辨識到成功才計數。依使用者最新指示取消全部卡片移除；購買完成或確認今日已購買即結束並停留遊戲，不開啟最近使用、不返回桌面、不提供清理按鈕。今日已確認成功時不重新啟動遊戲或購買。
+12. 使用時間限制卡片含 `yt_usage_limit` 20 分鐘與 `ig_usage_limit`／`threads_usage_limit`／`fb_usage_limit`／`dcard_usage_limit` 各 5 分鐘，皆預設 true。計算每次連續前景使用，離開／鎖屏／關閉／服務停止即重算，點擊與捲動不重算。用滿後立即開始該 App 獨立 60 秒禁止使用期，當下及期限內每次進入都只送 GLOBAL_ACTION_HOME；不開最近使用、不移除卡片、不強制停止、不新增遮罩。禁止期限不因離開／鎖屏／再次進入而重設或延長，關閉模組時不執行，重新啟用只恢復剩餘時間；服務／App 重啟從原 DataStore 的 `<id>_block_started_at`／`<id>_blocked_until` 恢復，缺少／已過期／時鐘倒退的期限視為無限制，單次最多恢復 60 秒。期限內使用 monotonic 時鐘，不保存使用歷史。
+13. 使用服務 scope 的單次使用截止與禁止期截止計時，不輪詢。禁止期只在事件與目前視窗一致時檢查並退出；每次 HOME 前重驗前景、螢幕、鎖屏與開關。各實例保留 450ms 冷卻，快速重入可由該事件安排一次剩餘冷卻的延後退出，離開／關閉／服務停止即取消，不做週期重試。只在 HOME 被接受時計數；禁止期到期後放行並開始新的一次使用。透過通用 foreground hooks 追蹤離開，只有有啟用觀察模組時動態接收所有套件事件；不讀其他 App 內容，動作仍依註冊表派送。所有最近使用選單／長按圖示／Close 流程已移除，舊退役模組資料只保留相容遷移清除，不得重用其 ID。不能宣稱強制閃退或停止背景播放。
 
 ## DataStore
 
@@ -29,7 +29,7 @@
 
 ## 版本、簽章與驗收
 
-- 目前 versionCode 10 / versionName 1.5.1。每次發布 versionCode 嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 v<versionName>。
+- 目前 versionCode 11 / versionName 1.6.0。每次發布 versionCode 嚴格增加；修正遞增 patch、新功能遞增 minor，Tag 精確等於 v<versionName>。
 - 正式更新來源固定公開倉庫 garytu001/personal-toolbox，不得恢復 YOUR_GITHUB_USERNAME。GITHUB_TOKEN 留空，手機不存放倉庫 Token。
 - applicationId 與正式簽章金鑰不可變。Release 優先讀 KEYSTORE_PATH、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD 環境變數，缺少欄位才讀 keystore.properties；金鑰與密碼不得提交。
 - 修改完成執行 gradlew.bat assembleDebug testDebugUnitTest lintDebug（Unix 用 ./gradlew），修正必要錯誤，說明未實機驗證範圍。編譯成功不是實機驗證。

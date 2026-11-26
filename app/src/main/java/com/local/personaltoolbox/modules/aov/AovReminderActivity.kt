@@ -107,8 +107,8 @@ class AovReminderActivity : AppCompatActivity() {
         binding.exactPermission.visibility = if (Build.VERSION.SDK_INT >= 31 && !AovReminder.hasExactPermission(this)) View.VISIBLE else View.GONE
         val stale = intent.hasExtra(AovReminder.DATE_EXTRA) && !AovReminderTime.isCurrentDay(intent.getStringExtra(AovReminder.DATE_EXTRA))
         binding.confirmOpen.isEnabled = enabled && !busy && AovRunRequests.requests.value == null &&
-            (!openedToday || completedToday) && !stale
-        binding.confirmOpen.setText(if (completedToday) R.string.aov_cleanup else R.string.aov_confirm_open)
+            !openedToday && !completedToday && !stale
+        binding.confirmOpen.setText(if (completedToday) R.string.aov_completed else R.string.aov_confirm_open)
         if (stale) binding.resultStatus.setText(R.string.aov_stale_reminder)
         else if (AovRunRequests.status.value.isNotEmpty()) binding.resultStatus.text = AovRunRequests.status.value
         else if (openedToday) binding.resultStatus.setText(R.string.aov_already_opened)
@@ -118,17 +118,7 @@ class AovReminderActivity : AppCompatActivity() {
         if (busy) return
         val date = intent.getStringExtra(AovReminder.DATE_EXTRA) ?: AovReminderTime.today().toString()
         if (!AovReminderTime.isCurrentDay(date)) { refresh(); return }
-        if (completedToday) {
-            busy = true
-            refresh()
-            app.applicationScope.launch {
-                try { removeConfirmedCard(date) }
-                catch (e: CancellationException) { throw e }
-                catch (_: Exception) { AovRunRequests.status.value = getString(R.string.card_remove_failed) }
-                finally { busy = false; if (!isDestroyed) refresh() }
-            }
-            return
-        }
+        if (completedToday) { refresh(); return }
         if (!AovRunRequests.ready) { binding.resultStatus.setText(R.string.aov_accessibility_required); return }
         val launch = packageManager.getLaunchIntentForPackage(AovReminder.GAME_PACKAGE)
         if (launch == null) { binding.resultStatus.setText(R.string.aov_game_missing); return }
@@ -140,7 +130,7 @@ class AovReminderActivity : AppCompatActivity() {
                 val claimed = store.claimOpen(date)
                 if (!claimed) {
                     openedToday = store.hasOpenedToday()
-                    if (store.hasConfirmedSuccessToday()) removeConfirmedCard(date)
+                    completedToday = store.hasConfirmedSuccessToday()
                     if (!isDestroyed) refresh()
                     return@launch
                 }
@@ -148,7 +138,7 @@ class AovReminderActivity : AppCompatActivity() {
                     store.releaseOpen(date)
                     return@launch
                 }
-                if (!AovRunRequests.begin(date, cleanupOnly = false)) {
+                if (!AovRunRequests.begin(date)) {
                     store.releaseOpen(date)
                     if (!isDestroyed) binding.resultStatus.setText(R.string.aov_accessibility_required)
                     return@launch
@@ -161,13 +151,6 @@ class AovReminderActivity : AppCompatActivity() {
             } catch (e: CancellationException) { throw e }
             catch (_: Exception) { if (!isDestroyed) binding.resultStatus.setText(R.string.preferences_error) }
             finally { busy = false; if (!isDestroyed) refresh() }
-        }
-    }
-
-    private suspend fun removeConfirmedCard(date: String) {
-        check(store.hasConfirmedSuccessToday() && AovReminderTime.isCurrentDay(date))
-        if (!AovRunRequests.begin(date, cleanupOnly = true)) {
-            AovRunRequests.status.value = getString(R.string.card_accessibility_required)
         }
     }
 

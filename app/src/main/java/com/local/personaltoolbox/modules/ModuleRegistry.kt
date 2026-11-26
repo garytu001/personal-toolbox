@@ -12,7 +12,6 @@ import com.local.personaltoolbox.modules.aov.AovReminderActivity
 import com.local.personaltoolbox.modules.aov.AovAutomationModule
 import android.content.Intent
 import com.local.personaltoolbox.modules.usagelimit.AppUsageLimitModule
-import com.local.personaltoolbox.modules.recents.RecentApps
 
 /** Single registration point for UI rows, settings defaults and service dispatch. */
 object ModuleRegistry {
@@ -38,19 +37,19 @@ object ModuleRegistry {
         )),
         ModuleCard("app_usage_limit", R.string.app_usage_limit_title, listOf(
             ModuleDefinition("yt_usage_limit", R.string.youtube_usage_limit,
-                createService = { AppUsageLimitModule("yt_usage_limit", RecentApps.YOUTUBE, 20) },
+                createService = { AppUsageLimitModule("yt_usage_limit", "com.google.android.youtube", 20) },
                 countLabelRes = R.string.usage_limit_exit_count),
             ModuleDefinition("ig_usage_limit", R.string.instagram_usage_limit,
-                createService = { AppUsageLimitModule("ig_usage_limit", RecentApps.INSTAGRAM, 5) },
+                createService = { AppUsageLimitModule("ig_usage_limit", "com.instagram.android", 5) },
                 countLabelRes = R.string.usage_limit_exit_count),
             ModuleDefinition("threads_usage_limit", R.string.threads_usage_limit,
-                createService = { AppUsageLimitModule("threads_usage_limit", RecentApps.THREADS, 5) },
+                createService = { AppUsageLimitModule("threads_usage_limit", "com.instagram.barcelona", 5) },
                 countLabelRes = R.string.usage_limit_exit_count),
             ModuleDefinition("fb_usage_limit", R.string.facebook_usage_limit,
-                createService = { AppUsageLimitModule("fb_usage_limit", RecentApps.FACEBOOK, 5) },
+                createService = { AppUsageLimitModule("fb_usage_limit", "com.facebook.katana", 5) },
                 countLabelRes = R.string.usage_limit_exit_count),
             ModuleDefinition("dcard_usage_limit", R.string.dcard_usage_limit,
-                createService = { AppUsageLimitModule("dcard_usage_limit", RecentApps.DCARD, 5) },
+                createService = { AppUsageLimitModule("dcard_usage_limit", "com.sparkslab.dcardreader", 5) },
                 countLabelRes = R.string.usage_limit_exit_count),
         )),
     )
