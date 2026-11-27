@@ -16,7 +16,7 @@ internal class UsageLimitTimer(
     private val isAllowed: () -> Boolean,
     private val goHome: () -> Boolean,
     private val onExited: () -> Unit,
-    private val onBlockStarted: () -> Unit,
+    private val onBlockStarted: (untilMillis: Long) -> Unit,
     private val blockMillis: Long = 60_000,
     initialBlockMillis: Long = 0,
     private val cooldownMillis: Long = 450,
@@ -80,7 +80,7 @@ internal class UsageLimitTimer(
             if (!foreground || !isAllowed()) return@launch
             blockedUntil = now() + blockMillis
             scheduleExpiry()
-            onBlockStarted()
+            onBlockStarted(blockedUntil)
             enforceBlock()
         }
     }
@@ -96,6 +96,21 @@ internal class UsageLimitTimer(
             // If HOME failed and the app stayed open, a fresh full visit starts at expiry.
             if (foreground && isAllowed()) startVisit()
         }
+    }
+
+    /** Receive the group's absolute monotonic deadline, cancelling any older usage visit. */
+    fun synchronizeBlock(untilMillis: Long) {
+        val end = if (untilMillis > now()) untilMillis else 0
+        if (end == blockedUntil) return
+        visit?.cancel()
+        visit = null
+        retry?.cancel()
+        retry = null
+        expiry?.cancel()
+        expiry = null
+        blockedUntil = end
+        if (end > 0) scheduleExpiry()
+        else if (foreground && isAllowed()) startVisit()
     }
 
     fun pause() {

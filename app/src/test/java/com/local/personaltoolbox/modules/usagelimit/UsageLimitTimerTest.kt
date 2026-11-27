@@ -200,7 +200,7 @@ class UsageLimitTimerTest {
         timer.pause()
     }
 
-    @Test fun independentAppsHaveIndependentUsageAndOneMinuteBlocks() = runTest {
+    @Test fun rawTimersHaveIndependentUsageBeforeReceivingASharedBlock() = runTest {
         val firstHost = Host()
         val otherHost = Host()
         val first = firstHost.timer(this, { testScheduler.currentTime }, restored = 60_000)

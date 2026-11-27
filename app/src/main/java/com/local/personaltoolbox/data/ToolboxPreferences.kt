@@ -11,6 +11,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.local.personaltoolbox.modules.ModuleDefinition
 import com.local.personaltoolbox.modules.ModuleOrder
 import com.local.personaltoolbox.modules.ModuleRegistry
+import com.local.personaltoolbox.modules.usagelimit.UsageBlockMigration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -21,7 +22,7 @@ import java.io.IOException
 
 private val Context.toolboxDataStore by preferencesDataStore(
     name = "toolbox_preferences", produceMigrations = { context ->
-        listOf(ToolboxMigration, RetiredRecentsMigration(context.applicationContext))
+        listOf(ToolboxMigration, RetiredRecentsMigration(context.applicationContext), UsageBlockMigration())
     })
 
 data class ModuleState(val enabled: Boolean = true, val blockedCount: Int = 0)

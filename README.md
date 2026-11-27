@@ -11,7 +11,7 @@
 | applicationId | com.local.personaltoolbox |
 | 顯示名稱 | Toolbox |
 | min / target / compile SDK | 26 / 34 / 34 |
-| versionCode / versionName | 11 / 1.6.0 |
+| versionCode / versionName | 13 / 1.7.0 |
 | Gradle / AGP / Kotlin | 8.14.3 / 8.13.2 / 2.1.20 |
 | JVM 目標 / CI JDK | 17 / 17 |
 
@@ -42,8 +42,9 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 ## 功能四：使用時間限制
 
 - 計算每次連續前景使用：YouTube 20 分鐘；Instagram、Threads、Facebook、Dcard 各 5 分鐘。切到其他 App、回桌面、鎖屏、關閉該開關或無障礙服務中斷即重算；點擊、滑動、切換同一 App 內頁面不重算。不累計每日用量，不儲存使用歷史。服務重新啟動或重新開啟開關時，從當前 App 重新計時。
-- 用滿設定時間後，立即進入該 App 獨立的 1 分鐘禁止使用期：當下回桌面，期間每次再進入都透過 `GLOBAL_ACTION_HOME` 回桌面。1 分鐘過後自動放行，開始新的一次完整使用時間。YouTube 維持 20 分鐘；其餘四個 App 維持 5 分鐘。
-- 禁止期不因回桌面、鎖屏、切到其他 App 或重複進入而重設／延長。關閉開關立即停止操作；重新啟用或服務／App 重啟只恢復原本剩餘時間，不重新給 1 分鐘。可選的 `<id>_block_started_at`／`<id>_blocked_until` 鍵保存在原單一 DataStore，舊版缺少鍵預設沒有禁止期；時鐘倒退或不合理長期限不恢復。
+- 用滿設定時間後，立即進入五個 App 共用的同一個 1 分鐘禁止使用期：當下回桌面，期間每次進入 YouTube、Instagram、Threads、Facebook 或 Dcard 都透過 `GLOBAL_ACTION_HOME` 回桌面。1 分鐘過後自動放行，開始新的一次完整使用時間。YouTube 維持 20 分鐘；其餘四個 App 維持 5 分鐘。
+- 禁止期不因回桌面、鎖屏、切到其他 App 或重複進入而重設／延長。關閉開關立即停止操作；重新啟用或服務／App 重啟只恢復原本剩餘時間，不重新給 1 分鐘。共用的 `app_usage_limit_block_started_at`／`app_usage_limit_blocked_until` 鍵保存在原單一 DataStore，舊版缺少鍵預設沒有禁止期；時鐘倒退或不合理長期限不恢復。
+- 各 App 使用門檻仍各自計算，但任一門檻達成就以 UsageBlockGroup 將同一個截止時間套用全部已啟用的目標 App，取消其他 App 既有使用倒數。跨 App 不會放行或延長禁止期，結束後各自開始新的使用時間。舊版多組禁止期自動遷移成其中最晚仍有效的原期限，既有共用設定不覆寫，其餘設定／次數／排序保留。
 - 使用服務 scope 的單次使用截止與禁止期截止計時器；期限內只回應實際前景／視窗事件，沒有週期輪詢。每次動作前再次核對開關、螢幕、鎖屏與前景套件，不跨延遲保存節點。各 App 獨立 450ms 冷卻，冷卻內快速重入只安排一次延後 HOME；離開／關閉／停止服務即取消。只有 HOME 被接受才增加退出次數。
 - 不操作最近使用畫面、不長按圖示、不點 Close、不移除任何卡片。回桌面對播放或程序的影響由 Android 與原 App 決定。
 - 只要有時間限制開關啟用，服務會透過 Android 的動態套件篩選接收其他 App 的視窗事件，以偵測離開與重算；僅核對前景套件，不掃描其他 App 的頁面內容。全部關閉後恢復註冊表套件篩選，動作派送始終限於註冊模組。無新增權限。
@@ -108,13 +109,13 @@ Debug APK：app/build/outputs/apk/debug/app-debug.apk。正式 APK：app/build/o
 - 現有 release.jks、keystore.properties 必須沿用，請離線備份；不要重新產生或提交。產生腳本會拒絕覆寫。
 - Gradle 個別欄位優先讀 KEYSTORE_PATH、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD，缺少才讀本機 keystore.properties。Debug 不需要金鑰；Release 缺少配置會明確失敗。
 - Actions Secrets：KEYSTORE_BASE64、KEYSTORE_PASSWORD、KEY_ALIAS、KEY_PASSWORD。KEYSTORE_PATH 由 Runner 暫存路徑決定，不必設 Secret。
-- Tag 必須精確等於 v<versionName>，例如 v1.6.0；workflow 用 JDK17 還原金鑰，assembleRelease + testDebugUnitTest + lintDebug、驗證簽章並發布 app-release.apk。每次 versionCode 嚴格遞增，下一修正版例如 12 / 1.6.1。
+- Tag 必須精確等於 v<versionName>，例如 v1.7.0；workflow 用 JDK17 還原金鑰，assembleRelease + testDebugUnitTest + lintDebug、驗證簽章並發布 app-release.apk。每次 versionCode 嚴格遞增，下一修正版例如 14 / 1.7.1。
 - UpdateConfig 固定 garytu001/personal-toolbox，Token 留空。HttpURLConnection / org.json 查最新 Release，DownloadManager 下載，核對套件／版本／簽章與可用的 SHA-256，FileProvider 喚起安裝；保留未知來源授權及續裝流程。
 - v1.2.0 只有 INTERNET、REQUEST_INSTALL_PACKAGES 兩個 uses-permission；v1.3.0 功能三新增權限見上節。無障礙／通知服務分別以 BIND_ACCESSIBILITY_SERVICE、BIND_NOTIFICATION_LISTENER_SERVICE 保護；沒有儲存或懸浮視窗權限。
 
 ## 驗收與範圍
 
-本機驗證執行 assembleDebug、testDebugUnitTest、lintDebug，正式發布另執行 assembleRelease。JVM 測試涵蓋排序、資料遷移保留、媒體切換、購買防重複、連續使用截止與取消、一分鐘禁止期、重入立即退出、450ms 冷卻、期限不延長、鎖屏與其他 App 保護、到期放行、重啟恢復及舊設定保留。編譯與單元測試不能取代實機驗證。
+本機驗證執行 assembleDebug、testDebugUnitTest、lintDebug，正式發布另執行 assembleRelease。JVM 測試涵蓋排序、資料遷移保留、媒體切換、購買防重複、連續使用截止與取消、五個 App 同步的一分鐘禁止期、跨 App 退出、重入立即退出、450ms 冷卻、期限不延長、鎖屏與其他 App 保護、到期放行、重啟恢復及舊設定保留。編譯與單元測試不能取代實機驗證。
 
 仍需手機核對：通知存取授權、YouTube 廣告辨識與媒體資訊、切回影片與播放進度、Facebook Reels 與 Stories、卡片拖曳、既有資料，以及正式 OTA 安裝。
 

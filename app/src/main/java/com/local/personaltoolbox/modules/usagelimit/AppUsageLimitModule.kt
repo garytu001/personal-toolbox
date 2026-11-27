@@ -21,6 +21,7 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
     private var timer: UsageLimitTimer? = null
     private var initialization: Job? = null
     private var environment: ModuleEnvironment? = null
+    private var sharedBlock: UsageBlockGroup? = null
 
     internal override fun connect(environment: ModuleEnvironment) {
         initialization?.cancel()
@@ -28,13 +29,12 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
         timer = null
         this.environment = environment
         val app = environment.service.application as ToolboxApplication
+        sharedBlock = app.usageBlockGroup
         initialization = environment.scope.launch {
             try {
                 app.preferences.settings.filterNotNull().first()
-                val store = UsageLimitStore(app.preferences, id)
-                val readAt = SystemClock.elapsedRealtime()
-                val savedRemaining = store.remaining(System.currentTimeMillis())
-                val remaining = (savedRemaining - (SystemClock.elapsedRealtime() - readAt)).coerceAtLeast(0)
+                val group = app.usageBlockGroup
+                group.awaitReady()
                 timer = UsageLimitTimer(environment.scope, minutes * 60_000L, SystemClock::elapsedRealtime,
                     isAllowed = { isTargetForeground(environment) },
                     goHome = {
@@ -47,17 +47,13 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
                         }
                     },
                     onExited = { environment.recordSuccess(id) },
-                    onBlockStarted = {
-                        val startedAt = System.currentTimeMillis()
-                        app.applicationScope.launch {
-                            try { store.start(startedAt) }
-                            catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                            catch (e: Exception) { Log.e(TAG, "Unable to persist temporary block", e) }
-                        }
-                    },
-                    initialBlockMillis = remaining, cooldownMillis = COOLDOWN_MS)
-                timer?.observe(isTargetForeground(environment))
-                timer?.enforceBlock()
+                    onBlockStarted = { end -> timer?.synchronizeBlock(group.start(end)) },
+                    cooldownMillis = COOLDOWN_MS)
+                group.until.collect { end ->
+                    timer?.synchronizeBlock(end)
+                    timer?.observe(isTargetForeground(environment))
+                    timer?.enforceBlock()
+                }
             } catch (e: kotlinx.coroutines.CancellationException) { throw e }
             catch (e: Exception) { Log.e(TAG, "Unable to restore temporary block", e) }
         }
@@ -72,6 +68,7 @@ class AppUsageLimitModule(id: String, packageName: String, private val minutes: 
     internal override fun onForegroundReady(): Boolean {
         val active = timer ?: return false
         val env = environment ?: return false
+        active.synchronizeBlock(sharedBlock?.until?.value ?: 0)
         if (!active.isBlocked || !isTargetForeground(env)) return false
         active.enforceBlock()
         return true
